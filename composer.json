@@ -1,0 +1,16 @@
+{
+    "name": "tegbot/tegbot",
+    "description": "Telergam bot SDK package",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Teg\\": "src/"
+        },
+        "files": [
+            "src/Helper/Functions.php"
+        ]
+    },
+    "extra": {}
+}

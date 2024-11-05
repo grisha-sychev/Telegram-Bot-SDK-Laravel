@@ -1,0 +1,61 @@
+<?php
+
+namespace Teg\Types;
+
+class Venue implements \Teg\Types\Interface\InitObject
+{
+    private $location;
+    private $title;
+    private $address;
+    private $foursquare_id;
+    private $foursquare_type;
+    private $google_place_id;
+    private $google_place_type;
+
+    public function __construct($request)
+    {
+        $request = (object) $request;
+        $this->location = new Location($request->location) ?? null;
+        $this->title = $request->title ?? null;
+        $this->address = $request->address ?? null;
+        $this->foursquare_id = $request->foursquare_id ?? null;
+        $this->foursquare_type = $request->foursquare_type ?? null;
+        $this->google_place_id = $request->google_place_id ?? null;
+        $this->google_place_type = $request->google_place_type ?? null;
+    }
+
+    public function getLocation()
+    {
+        return $this->location;
+    }
+
+    public function getTitle()
+    {
+        return $this->title;
+    }
+
+    public function getAddress()
+    {
+        return $this->address;
+    }
+
+    public function getFoursquareId()
+    {
+        return $this->foursquare_id;
+    }
+
+    public function getFoursquareType()
+    {
+        return $this->foursquare_type;
+    }
+
+    public function getGooglePlaceId()
+    {
+        return $this->google_place_id;
+    }
+
+    public function getGooglePlaceType()
+    {
+        return $this->google_place_type;
+    }
+}
