@@ -12,14 +12,14 @@ class TegDelToken extends Command
      *
      * @var string
      */
-    protected $signature = 'teg:deltoken {token}';
+    protected $signature = 'teg:deltoken {token?}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Delete token Telegram bot';
+    protected $description = 'Delete token Telegram';
 
     /**
      * Execute the console command.
@@ -27,7 +27,7 @@ class TegDelToken extends Command
     public function handle()
     {
         $client = new LightBot();
-        $client->token = $this->argument('token');
+        $client->token = $this->argument('token') ?? $this->ask('Токен системы');
 
         if ($client !== null) {
             $array = $client->removeWebhook();

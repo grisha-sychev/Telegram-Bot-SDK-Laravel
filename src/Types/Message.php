@@ -103,7 +103,7 @@ class Message implements InitObject
         $this->sender_business_bot = isset($request->sender_business_bot) ? new User($request->sender_business_bot) : null;
         $this->date = $request->date ?? 0;
         $this->business_connection_id = $request->business_connection_id ?? null;
-        $this->chat = new Chat($request->chat);
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
         $this->forward_origin = isset($request->forward_origin) ? new MessageOrigin($request->forward_origin) : null;
         $this->is_topic_message = $request->is_topic_message ?? null;
         $this->is_automatic_forward = $request->is_automatic_forward ?? null;

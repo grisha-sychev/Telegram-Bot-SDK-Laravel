@@ -12,5 +12,11 @@
             "src/Helper/Functions.php"
         ]
     },
-    "extra": {}
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Teg\\Providers\\TegbotServiceProvider"
+            ]
+        }
+    }
 }

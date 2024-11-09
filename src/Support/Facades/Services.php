@@ -23,7 +23,7 @@ class Services
      */
     public function getToken(string|null $bot)
     {
-        return config('tgb.' . $bot);
+        return config('tegbot.' . $bot);
     }
 
     /**

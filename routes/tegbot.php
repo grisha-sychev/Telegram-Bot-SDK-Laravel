@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 
-Route::post('/bot{token}', function ($token) {
+Route::post('/bot/{token}', function ($token) {
 
     $bots = config('tegbot');
 

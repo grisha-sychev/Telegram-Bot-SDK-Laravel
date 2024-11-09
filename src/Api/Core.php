@@ -16,7 +16,7 @@ class Core
     /**
      * @var string|null $token Токен бота.
      */
-    public ?string $token = null;
+    public ?string $token;
 
     /**
      * @var string|null $hostname host, связанный с ботом.
@@ -30,10 +30,10 @@ class Core
      */
     public function method($method, $query = [])
     {
-        $this->token = (new Services)->getToken($this->bot);
-        $url = "https://api.telegram.org/bot" . $this->token . "/" . $method . ($query ? '?' . http_build_query($query) : '');
+        $url = "https://api.telegram.org/bot" . (new Services)->getToken($this->bot) . "/" . $method . ($query ? '?' . http_build_query($query) : '');
         return Http::withoutVerifying()->get($url)->json();
     }
+    
     
     /**
      * Получает все данные запроса от Telegram и возвращает их в виде массива.

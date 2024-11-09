@@ -2,21 +2,21 @@
 
 namespace Teg\Api;
 
+use Teg\Support\Facades\Services;
+
 class Basic extends Core
 {
     /**
-     * Available methods
-     */
-
-    /**
      * Устанавливает вебхук (Webhook) для бота.
      */
+
+
     public function setWebhook()
     {
         $hostname = $this->hostname ?? request()->getHost();
 
         return $this->method('setWebhook', [
-            "url" => 'https://' . $hostname . '/bot/' . $this->token,
+            "url" => 'https://' . $hostname . '/bot/' . (new Services)->getToken($this->bot),
         ]);
     }
 
