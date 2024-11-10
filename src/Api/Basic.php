@@ -1785,7 +1785,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от сервера.
      */
-    public function editMessageText($text, $business_connection_id = null, $chat_id = null, $message_id = null, $inline_message_id = null, $parse_mode = null, $entities = null, $link_preview_options = null, $reply_markup = null)
+    public function editMessageText($chat_id, $message_id, $text, $business_connection_id = null, $inline_message_id = null, $parse_mode = null, $entities = null, $link_preview_options = null, $reply_markup = null)
     {
         return $this->method('editMessageText', [
             "business_connection_id" => $business_connection_id,

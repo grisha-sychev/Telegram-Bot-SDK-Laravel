@@ -11,9 +11,9 @@ class InaccessibleMessage implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->chat = new Chat($request->chat) ?? null;
-        $this->message_id = $request->message_id ?? null;
-        $this->date = $request->date ?? 0;
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
+        $this->message_id = isset($request->message_id) ? $request->message_id : null;
+        $this->date = isset($request->date) ? $request->date : 0;
     }
 
     public function getChat()

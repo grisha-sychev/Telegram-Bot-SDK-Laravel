@@ -14,7 +14,7 @@ class InlineKeyboardMarkup implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->inline_keyboard = new InlineKeyboardButton($request->inline_keyboard) ?? [];
+        $this->inline_keyboard = isset($request->inline_keyboard) ? new InlineKeyboardButton($request->inline_keyboard) : [];
     }
 
     public function getInlineKeyboard()

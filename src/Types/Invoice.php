@@ -13,11 +13,11 @@ class Invoice implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->title = $request->title ?? null;
-        $this->description = $request->description ?? null;
-        $this->start_parameter = $request->start_parameter ?? null;
-        $this->currency = $request->currency ?? null;
-        $this->total_amount = $request->total_amount ?? null;
+        $this->title = isset($request->title) ? $request->title : null;
+        $this->description = isset($request->description) ? $request->description : null;
+        $this->start_parameter = isset($request->start_parameter) ? $request->start_parameter : null;
+        $this->currency = isset($request->currency) ? $request->currency : null;
+        $this->total_amount = isset($request->total_amount) ? $request->total_amount : null;
     }
 
     public function getTitle()

@@ -15,13 +15,13 @@ class MessageEntity implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->type = $request->type ?? null;
-        $this->offset = $request->offset ?? null;
-        $this->length = $request->length ?? null;
-        $this->url = $request->url ?? null;
-        $this->user = new User($request->user) ?? null;
-        $this->language = $request->language ?? null;
-        $this->custom_emoji_id = $request->custom_emoji_id ?? null;
+        $this->type = isset($request->type) ? $request->type : null;
+        $this->offset = isset($request->offset) ? $request->offset : null;
+        $this->length = isset($request->length) ? $request->length : null;
+        $this->url = isset($request->url) ? $request->url : null;
+        $this->user = isset($request->user) ? new User($request->user) : null;
+        $this->language = isset($request->language) ? $request->language : null;
+        $this->custom_emoji_id = isset($request->custom_emoji_id) ? $request->custom_emoji_id : null;
     }
 
     public function getType()

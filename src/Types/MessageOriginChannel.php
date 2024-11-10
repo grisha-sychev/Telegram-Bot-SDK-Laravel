@@ -14,10 +14,10 @@ class MessageOriginChannel implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'channel';
-        $this->date = $request->date ?? null;
-        $this->chat = new Chat($request->chat) ?? null;
-        $this->message_id = $request->message_id ?? null;
-        $this->author_signature = $request->author_signature ?? null;
+        $this->date = isset($request->date) ? $request->date : null;
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
+        $this->message_id = isset($request->message_id) ? $request->message_id : null;
+        $this->author_signature = isset($request->author_signature) ? $request->author_signature : null;
     }
 
     public function getType()

@@ -42,7 +42,7 @@ class Core
      */
     public function request()
     {
-        return (object) request()->json()->all();
+        return (object) request()->all();
     }
 
 }

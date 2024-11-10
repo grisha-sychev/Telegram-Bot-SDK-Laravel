@@ -11,9 +11,9 @@ class ProximityAlertTriggered implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->traveler = new User($request->traveler);
-        $this->watcher = new User($request->watcher);
-        $this->distance = $request->distance;
+        $this->traveler = isset($request->traveler) ? new User($request->traveler) : null;
+        $this->watcher = isset($request->watcher) ? new User($request->watcher) : null;
+        $this->distance = isset($request->distance) ? $request->distance : null;
     }
 
     public function getTraveler()

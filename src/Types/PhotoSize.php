@@ -13,11 +13,11 @@ class PhotoSize implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->file_id = $request->file_id;
-        $this->file_unique_id = $request->file_unique_id;
-        $this->width = $request->width;
-        $this->height = $request->height;
-        $this->file_size = $request->file_size ?? null;
+        $this->file_id = isset($request->file_id) ? $request->file_id : null;
+        $this->file_unique_id = isset($request->file_unique_id) ? $request->file_unique_id : null;
+        $this->width = isset($request->width) ? $request->width : null;
+        $this->height = isset($request->height) ? $request->height : null;
+        $this->file_size = isset($request->file_size) ? $request->file_size : null;
     }
 
     public function getFileId()

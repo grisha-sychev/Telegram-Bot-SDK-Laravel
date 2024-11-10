@@ -15,13 +15,14 @@ class Chat implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->id = $request->id;
-        $this->type = $request->type;
-        $this->title = $request->title ?? null;
-        $this->username = $request->username ?? null;
-        $this->first_name = $request->first_name ?? null;
-        $this->last_name = $request->last_name ?? null;
-        $this->is_forum = $request->is_forum ?? null;
+
+        $this->id = isset($request->id) ? $request->id : null;
+        $this->type = isset($request->type) ? $request->type : null;
+        $this->title = isset($request->title) ? $request->title : null;
+        $this->username = isset($request->username) ? $request->username : null;
+        $this->first_name = isset($request->first_name) ? $request->first_name : null;
+        $this->last_name = isset($request->last_name) ? $request->last_name : null;
+        $this->is_forum = isset($request->is_forum) ? $request->is_forum : null;
     }
 
     public function getId(): int

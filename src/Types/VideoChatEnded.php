@@ -9,7 +9,7 @@ class VideoChatEnded implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->duration = $request->duration ?? 0;
+        $this->duration = isset($request->duration) ? $request->duration : 0;
     }
 
     public function getDuration()

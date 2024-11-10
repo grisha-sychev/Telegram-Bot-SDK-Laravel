@@ -61,7 +61,7 @@ class Services
      *
      * @return string JSON-представление инлайн-клавиатуры.
      */
-    public function inlineKeyboard($keyboard)
+    public static function inlineKeyboard($keyboard)
     {
         return json_encode(['inline_keyboard' => $keyboard]);
     }
@@ -75,7 +75,7 @@ class Services
      *
      * @return string JSON-представление обычной клавиатуры.
      */
-    public function keyboard($keyboard, $one_time_keyboard = true, $resize_keyboard = true)
+    public static function keyboard($keyboard, $one_time_keyboard = true, $resize_keyboard = true)
     {
         return json_encode([
             'keyboard' => $keyboard,

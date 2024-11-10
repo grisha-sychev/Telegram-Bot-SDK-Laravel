@@ -9,7 +9,7 @@ class VideoChatParticipantsInvited implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->users = new User($request->users) ?? [];
+        $this->users = isset($request->users) ? new User($request->users) : [];
     }
 
     public function getUsers()

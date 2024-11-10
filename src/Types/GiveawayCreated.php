@@ -9,7 +9,7 @@ class GiveawayCreated implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->prize_star_count = $request->prize_star_count ?? null;
+        $this->prize_star_count = isset($request->prize_star_count) ? $request->prize_star_count : null;
     }
 
     public function getPrizeStarCount()

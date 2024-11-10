@@ -13,11 +13,11 @@ class Contact implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->phone_number = $request->phone_number ?? null;
-        $this->first_name = $request->first_name ?? null;
-        $this->last_name = $request->last_name ?? null;
-        $this->user_id = $request->user_id ?? null;
-        $this->vcard = $request->vcard ?? null;
+        $this->phone_number = isset($request->phone_number) ? $request->phone_number : null;
+        $this->first_name = isset($request->first_name) ? $request->first_name : null;
+        $this->last_name = isset($request->last_name) ? $request->last_name : null;
+        $this->user_id = isset($request->user_id) ? $request->user_id : null;
+        $this->vcard = isset($request->vcard) ? $request->vcard : null;
     }
 
     public function getPhoneNumber()

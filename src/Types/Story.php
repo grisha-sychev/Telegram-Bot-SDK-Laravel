@@ -10,8 +10,8 @@ class Story implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->chat = new Chat($request->chat) ?? null;
-        $this->id = $request->id ?? null;
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
+        $this->id = isset($request->id) ? $request->id : null;
     }
 
     public function getChat()

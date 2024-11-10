@@ -15,13 +15,13 @@ class Venue implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->location = new Location($request->location) ?? null;
-        $this->title = $request->title ?? null;
-        $this->address = $request->address ?? null;
-        $this->foursquare_id = $request->foursquare_id ?? null;
-        $this->foursquare_type = $request->foursquare_type ?? null;
-        $this->google_place_id = $request->google_place_id ?? null;
-        $this->google_place_type = $request->google_place_type ?? null;
+        $this->location = isset($request->location) ? new Location($request->location) : null;
+        $this->title = isset($request->title) ? $request->title : null;
+        $this->address = isset($request->address) ? $request->address : null;
+        $this->foursquare_id = isset($request->foursquare_id) ? $request->foursquare_id : null;
+        $this->foursquare_type = isset($request->foursquare_type) ? $request->foursquare_type : null;
+        $this->google_place_id = isset($request->google_place_id) ? $request->google_place_id : null;
+        $this->google_place_type = isset($request->google_place_type) ? $request->google_place_type : null;
     }
 
     public function getLocation()

@@ -10,8 +10,8 @@ class ForumTopicEdited implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->name = $request->name ?? null;
-        $this->icon_custom_emoji_id = $request->icon_custom_emoji_id ?? null;
+        $this->name = isset($request->name) ? $request->name : null;
+        $this->icon_custom_emoji_id = isset($request->icon_custom_emoji_id) ? $request->icon_custom_emoji_id : null;
     }
 
     public function getName()

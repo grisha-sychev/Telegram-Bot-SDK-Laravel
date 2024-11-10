@@ -12,8 +12,8 @@ class MessageOriginUser implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'user';
-        $this->date = $request->date ?? null;
-        $this->sender_user = new User($request->sender_user) ?? null;
+        $this->date = isset($request->date) ? $request->date : null;
+        $this->sender_user = isset($request->sender_user) ? new User($request->sender_user) : null;
     }
 
     public function getType()

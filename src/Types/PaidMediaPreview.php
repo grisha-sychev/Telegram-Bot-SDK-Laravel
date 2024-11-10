@@ -13,9 +13,9 @@ class PaidMediaPreview implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'preview';
-        $this->width = $request->width ?? null;
-        $this->height = $request->height ?? null;
-        $this->duration = $request->duration ?? null;
+        $this->width = isset($request->width) ? $request->width : null;
+        $this->height = isset($request->height) ? $request->height : null;
+        $this->duration = isset($request->duration) ? $request->duration : null;
     }
 
     public function getType()

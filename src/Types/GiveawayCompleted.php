@@ -12,10 +12,10 @@ class GiveawayCompleted implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->winner_count = $request->winner_count;
-        $this->unclaimed_prize_count = $request->unclaimed_prize_count ?? null;
-        $this->giveaway_message = new Message($request->giveaway_message) ?? null;
-        $this->is_star_giveaway = $request->is_star_giveaway ?? null;
+        $this->winner_count = isset($request->winner_count) ? $request->winner_count : null;
+        $this->unclaimed_prize_count = isset($request->unclaimed_prize_count) ? $request->unclaimed_prize_count : null;
+        $this->giveaway_message = isset($request->giveaway_message) ? new Message($request->giveaway_message) : null;
+        $this->is_star_giveaway = isset($request->is_star_giveaway) ? $request->is_star_giveaway : null;
     }
     
     public function getWinnerCount()

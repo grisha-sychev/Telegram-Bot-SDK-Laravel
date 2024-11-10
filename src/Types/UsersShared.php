@@ -10,8 +10,8 @@ class UsersShared implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->request_id = $request->request_id ?? null;
-        $this->users = new SharedUser($request->users) ?? [];
+        $this->request_id = isset($request->request_id) ? $request->request_id : null;
+        $this->users = isset($request->users) ? new SharedUser($request->users) : [];
     }
 
     public function getRequestId()

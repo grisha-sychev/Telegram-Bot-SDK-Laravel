@@ -20,18 +20,18 @@ class GiveawayWinners implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->chat = new Chat($request->chat);
-        $this->giveaway_message_id = $request->giveaway_message_id;
-        $this->winners_selection_date = $request->winners_selection_date;
-        $this->winner_count = $request->winner_count;
-        $this->winners = new User($request->winners);
-        $this->additional_chat_count = $request->additional_chat_count ?? null;
-        $this->prize_star_count = $request->prize_star_count ?? null;
-        $this->premium_subscription_month_count = $request->premium_subscription_month_count ?? null;
-        $this->unclaimed_prize_count = $request->unclaimed_prize_count ?? null;
-        $this->only_new_members = $request->only_new_members ?? null;
-        $this->was_refunded = $request->was_refunded ?? null;
-        $this->prize_description = $request->prize_description ?? null;
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
+        $this->giveaway_message_id = isset($request->giveaway_message_id) ? $request->giveaway_message_id : null;
+        $this->winners_selection_date = isset($request->winners_selection_date) ? $request->winners_selection_date : null;
+        $this->winner_count = isset($request->winner_count) ? $request->winner_count : null;
+        $this->winners = isset($request->winners) ? new User($request->winners) : null;
+        $this->additional_chat_count = isset($request->additional_chat_count) ? $request->additional_chat_count : null;
+        $this->prize_star_count = isset($request->prize_star_count) ? $request->prize_star_count : null;
+        $this->premium_subscription_month_count = isset($request->premium_subscription_month_count) ? $request->premium_subscription_month_count : null;
+        $this->unclaimed_prize_count = isset($request->unclaimed_prize_count) ? $request->unclaimed_prize_count : null;
+        $this->only_new_members = isset($request->only_new_members) ? $request->only_new_members : null;
+        $this->was_refunded = isset($request->was_refunded) ? $request->was_refunded : null;
+        $this->prize_description = isset($request->prize_description) ? $request->prize_description : null;
     }
 
     public function getChat()

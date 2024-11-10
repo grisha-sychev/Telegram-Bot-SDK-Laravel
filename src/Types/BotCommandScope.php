@@ -1,8 +1,8 @@
 <?php
 
-namespace Teg\\Types;
+namespace Teg\Types;
 
-class BotCommandScope implements \Teg\\Types\Interface\InitObject
+class BotCommandScope implements \Teg\Types\Interface\InitObject
 {
     public function __construct($request)
     {

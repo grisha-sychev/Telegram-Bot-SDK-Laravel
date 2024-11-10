@@ -11,9 +11,9 @@ class WriteAccessAllowed implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->from_request = $request->from_request ?? null;
-        $this->web_app_name = $request->web_app_name ?? null;
-        $this->from_attachment_menu = $request->from_attachment_menu ?? null;
+        $this->from_request = isset($request->from_request) ? $request->from_request : null;
+        $this->web_app_name = isset($request->web_app_name) ? $request->web_app_name : null;
+        $this->from_attachment_menu = isset($request->from_attachment_menu) ? $request->from_attachment_menu : null;
     }
 
     public function getFromRequest()

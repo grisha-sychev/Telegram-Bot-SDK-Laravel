@@ -8,6 +8,6 @@ class Skeleton extends Basic
 {
     public function getMessage()
     {
-        return new Message($this->request());
+        return isset($this->request()->message) ? new Message($this->request()->message) : null;
     }
 }

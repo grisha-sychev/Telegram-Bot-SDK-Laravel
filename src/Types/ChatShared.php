@@ -13,11 +13,11 @@ class ChatShared implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->request_id = $request->request_id ?? null;
-        $this->chat_id = $request->chat_id ?? null;
-        $this->title = $request->title ?? null;
-        $this->username = $request->username ?? null;
-        $this->photo = new PhotoSize($request->photo) ?? [];
+        $this->request_id = isset($request->request_id) ? $request->request_id : null;
+        $this->chat_id = isset($request->chat_id) ? $request->chat_id : null;
+        $this->title = isset($request->title) ? $request->title : null;
+        $this->username = isset($request->username) ? $request->username : null;
+        $this->photo = isset($request->photo) ? new PhotoSize($request->photo) : [];
     }
 
     public function getRequestId()

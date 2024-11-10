@@ -11,7 +11,7 @@ class PaidMediaVideo implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'video';
-        $this->video = new Video($request->video) ?? null;
+        $this->video = isset($request->video) ? new Video($request->video) : null;
     }
 
     public function getType()

@@ -19,19 +19,19 @@ class User implements \Teg\Types\Interface\InitObject
     private ?bool $has_main_web_app = null;
 
     public function __construct($request) {
-        $this->id = $request->id ?? 0;
-        $this->is_bot = $request->is_bot ?? false;
-        $this->first_name = $request->first_name ?? '';
-        $this->last_name = $request->last_name ?? null;
-        $this->username = $request->username ?? null;
-        $this->language_code = $request->language_code ?? null;
-        $this->is_premium = $request->is_premium ?? null;
-        $this->added_to_attachment_menu = $request->added_to_attachment_menu ?? null;
-        $this->can_join_groups = $request->can_join_groups ?? null;
-        $this->can_read_all_group_messages = $request->can_read_all_group_messages ?? null;
-        $this->supports_inline_queries = $request->supports_inline_queries ?? null;
-        $this->can_connect_to_business = $request->can_connect_to_business ?? null;
-        $this->has_main_web_app = $request->has_main_web_app ?? null;
+        $this->id = isset($request->id) ? $request->id : 0;
+        $this->is_bot = isset($request->is_bot) ? $request->is_bot : false;
+        $this->first_name = isset($request->first_name) ? $request->first_name : '';
+        $this->last_name = isset($request->last_name) ? $request->last_name : null;
+        $this->username = isset($request->username) ? $request->username : null;
+        $this->language_code = isset($request->language_code) ? $request->language_code : null;
+        $this->is_premium = isset($request->is_premium) ? $request->is_premium : null;
+        $this->added_to_attachment_menu = isset($request->added_to_attachment_menu) ? $request->added_to_attachment_menu : null;
+        $this->can_join_groups = isset($request->can_join_groups) ? $request->can_join_groups : null;
+        $this->can_read_all_group_messages = isset($request->can_read_all_group_messages) ? $request->can_read_all_group_messages : null;
+        $this->supports_inline_queries = isset($request->supports_inline_queries) ? $request->supports_inline_queries : null;
+        $this->can_connect_to_business = isset($request->can_connect_to_business) ? $request->can_connect_to_business : null;
+        $this->has_main_web_app = isset($request->has_main_web_app) ? $request->has_main_web_app : null;
     }
 
     public function getId(): int

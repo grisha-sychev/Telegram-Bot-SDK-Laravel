@@ -11,9 +11,9 @@ class ForumTopicCreated implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->name = $request->name;
-        $this->icon_color = $request->icon_color;
-        $this->icon_custom_emoji_id = $request->icon_custom_emoji_id ?? null;
+        $this->name = isset($request->name) ? $request->name : null;
+        $this->icon_color = isset($request->icon_color) ? $request->icon_color : null;
+        $this->icon_custom_emoji_id = isset($request->icon_custom_emoji_id) ? $request->icon_custom_emoji_id : null;
     }
     
     public function getName()

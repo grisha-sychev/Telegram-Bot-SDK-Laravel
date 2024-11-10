@@ -12,8 +12,8 @@ class MessageOriginHiddenUser implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'hidden_user';
-        $this->date = $request->date ?? null;
-        $this->sender_user_name = $request->sender_user_name ?? null;
+        $this->date = isset($request->date) ? $request->date : null;
+        $this->sender_user_name = isset($request->sender_user_name) ? $request->sender_user_name : null;
     }
 
     public function getType()

@@ -9,7 +9,7 @@ class MessageAutoDeleteTimerChanged implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->message_auto_delete_time = $request->message_auto_delete_time ?? null;
+        $this->message_auto_delete_time = isset($request->message_auto_delete_time) ? $request->message_auto_delete_time : null;
     }
 
     public function getMessageAutoDeleteTime()

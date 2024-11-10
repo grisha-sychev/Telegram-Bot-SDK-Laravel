@@ -12,10 +12,10 @@ class LoginUrl implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->url = $request->url ?? null;
-        $this->forward_text = $request->forward_text ?? null;
-        $this->bot_username = $request->bot_username ?? null;
-        $this->request_write_access = $request->request_write_access ?? null;
+        $this->url = isset($request->url) ? $request->url : null;
+        $this->forward_text = isset($request->forward_text) ? $request->forward_text : null;
+        $this->bot_username = isset($request->bot_username) ? $request->bot_username : null;
+        $this->request_write_access = isset($request->request_write_access) ? $request->request_write_access : null;
     }
 
     public function getUrl()

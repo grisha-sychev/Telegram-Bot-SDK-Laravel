@@ -22,20 +22,20 @@ class Poll implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->id = $request->id ?? null;
-        $this->question = $request->question ?? null;
-        $this->question_entities = new MessageEntity($request->question_entities) ?? [];
-        $this->options = new PollOption($request->options) ?? [];
-        $this->total_voter_count = $request->total_voter_count ?? 0;
-        $this->is_closed = $request->is_closed ?? false;
-        $this->is_anonymous = $request->is_anonymous ?? false;
-        $this->type = $request->type ?? '';
-        $this->allows_multiple_answers = $request->allows_multiple_answers ?? false;
-        $this->correct_option_id = $request->correct_option_id ?? null;
-        $this->explanation = $request->explanation ?? '';
-        $this->explanation_entities = new MessageEntity($request->explanation_entities) ?? [];
-        $this->open_period = $request->open_period ?? null;
-        $this->close_date = $request->close_date ?? null;
+        $this->id = isset($request->id) ? $request->id : null;
+        $this->question = isset($request->question) ? $request->question : null;
+        $this->question_entities = isset($request->question_entities) ? new MessageEntity($request->question_entities) : [];
+        $this->options = isset($request->options) ? new PollOption($request->options) : [];
+        $this->total_voter_count = isset($request->total_voter_count) ? $request->total_voter_count : 0;
+        $this->is_closed = isset($request->is_closed) ? $request->is_closed : false;
+        $this->is_anonymous = isset($request->is_anonymous) ? $request->is_anonymous : false;
+        $this->type = isset($request->type) ? $request->type : '';
+        $this->allows_multiple_answers = isset($request->allows_multiple_answers) ? $request->allows_multiple_answers : false;
+        $this->correct_option_id = isset($request->correct_option_id) ? $request->correct_option_id : null;
+        $this->explanation = isset($request->explanation) ? $request->explanation : '';
+        $this->explanation_entities = isset($request->explanation_entities) ? new MessageEntity($request->explanation_entities) : [];
+        $this->open_period = isset($request->open_period) ? $request->open_period : null;
+        $this->close_date = isset($request->close_date) ? $request->close_date : null;
     }
 
     public function getId()

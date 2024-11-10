@@ -12,10 +12,10 @@ class MessageOriginChat implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->type = $request->type ?? 'chat';
-        $this->date = $request->date ?? null;
-        $this->sender_chat = new Chat($request->sender_chat) ?? null;
-        $this->author_signature = $request->author_signature ?? null;
+        $this->type = 'chat';
+        $this->date = isset($request->date) ? $request->date : null;
+        $this->sender_chat = isset($request->sender_chat) ? new Chat($request->sender_chat) : null;
+        $this->author_signature = isset($request->author_signature) ? $request->author_signature : null;
     }
 
     public function getType()

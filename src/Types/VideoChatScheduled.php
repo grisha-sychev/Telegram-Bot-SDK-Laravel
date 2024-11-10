@@ -9,7 +9,7 @@ class VideoChatScheduled implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->start_date = $request->start_date ?? null;
+        $this->start_date = isset($request->start_date) ? $request->start_date : null;
     }
 
     public function getStartDate()

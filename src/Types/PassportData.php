@@ -10,8 +10,8 @@ class PassportData implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->data = new EncryptedPassportElement($request->data) ?? [];
-        $this->credentials = new EncryptedCredentials($request->credentials) ?? null;
+        $this->data = isset($request->data) ? new EncryptedPassportElement($request->data) : [];
+        $this->credentials = isset($request->credentials) ? new EncryptedCredentials($request->credentials) : null;
     }
 
     public function getData()

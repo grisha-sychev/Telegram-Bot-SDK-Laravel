@@ -10,8 +10,8 @@ class Dice implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->emoji = $request->emoji ?? '';
-        $this->value = $request->value ?? 0;
+        $this->emoji = isset($request->emoji) ? $request->emoji : '';
+        $this->value = isset($request->value) ? $request->value : 0;
     }
 
     public function getEmoji(): string

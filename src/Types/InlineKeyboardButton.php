@@ -18,16 +18,16 @@ class InlineKeyboardButton implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->text = $request->text ?? null;
-        $this->url = $request->url ?? null;
-        $this->callback_data = $request->callback_data ?? null;
-        $this->web_app = new WebAppInfo($request->web_app) ?? null;
-        $this->login_url = new LoginUrl($request->login_url) ?? null;
-        $this->switch_inline_query = $request->switch_inline_query ?? null;
-        $this->switch_inline_query_current_chat = $request->switch_inline_query_current_chat ?? null;
-        $this->switch_inline_query_chosen_chat = new SwitchInlineQueryChosenChat($request->switch_inline_query_chosen_chat) ?? null;
-        $this->callback_game = new CallbackGame($request->callback_game) ?? null;
-        $this->pay = $request->pay ?? null;
+        $this->text = isset($request->text) ? $request->text : null;
+        $this->url = isset($request->url) ? $request->url : null;
+        $this->callback_data = isset($request->callback_data) ? $request->callback_data : null;
+        $this->web_app = isset($request->web_app) ? new WebAppInfo($request->web_app) : null;
+        $this->login_url = isset($request->login_url) ? new LoginUrl($request->login_url) : null;
+        $this->switch_inline_query = isset($request->switch_inline_query) ? $request->switch_inline_query : null;
+        $this->switch_inline_query_current_chat = isset($request->switch_inline_query_current_chat) ? $request->switch_inline_query_current_chat : null;
+        $this->switch_inline_query_chosen_chat = isset($request->switch_inline_query_chosen_chat) ? new SwitchInlineQueryChosenChat($request->switch_inline_query_chosen_chat) : null;
+        $this->callback_game = isset($request->callback_game) ? new CallbackGame($request->callback_game) : null;
+        $this->pay = isset($request->pay) ? $request->pay : null;
     }
 
     public function getText()

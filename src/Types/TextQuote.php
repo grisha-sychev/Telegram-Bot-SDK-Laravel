@@ -12,10 +12,10 @@ class TextQuote implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->text = $request->text ?? '';
-        $this->entities = new MessageEntity($request->entities) ?? [];
-        $this->position = $request->position ?? 0;
-        $this->is_manual = $request->is_manual ?? false;
+        $this->text = isset($request->text) ? $request->text : '';
+        $this->entities = isset($request->entities) ? new MessageEntity($request->entities) : [];
+        $this->position = isset($request->position) ? $request->position : 0;
+        $this->is_manual = isset($request->is_manual) ? $request->is_manual : false;
     }
 
     public function getText()

@@ -8,9 +8,17 @@ use Teg\Support\Facades\Services;
 
 class LightBot extends Skeleton
 {
+    public $getMessage;
+    public $getMessageId;
+    public $getChatId;
+
     public function __construct()
     {
         $this->run();
+
+        $this->getMessage = $this->getMessage();
+        $this->getMessageId = $this->getMessage()->getMessageId();
+        $this->getChatId = $this->getMessage->getChat()->getId();
     }
 
     /**
@@ -25,7 +33,8 @@ class LightBot extends Skeleton
     {
         $calledClass = get_called_class();
         $namespaceParts = explode('\\', $calledClass);
-        $this->bot = strtolower($namespaceParts[count($namespaceParts) - 1]);
+        $className = $namespaceParts[count($namespaceParts) - 1];
+        $this->bot = strtolower(str_replace('Bot', '', $className));
     }
 
     /**
@@ -45,7 +54,7 @@ class LightBot extends Skeleton
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
-        return $this->sendMessage($id, $message, $keyboard ? $this->$type($keygrid) : $keyboard, $parse_mode);
+        return $this->sendMessage($id, $message, null, null, $parse_mode, null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
     }
 
     /**
@@ -60,7 +69,7 @@ class LightBot extends Skeleton
      */
     public function sendSelf($message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
     {
-        return $this->sendOut($this->getMessage()->getChat()->getId(), $message, $keyboard, $layout, $type_keyboard, $parse_mode);
+        return $this->sendOut($this->getChatId, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
     }
 
     /**
@@ -92,81 +101,97 @@ class LightBot extends Skeleton
         return $this->sendOut($id, $message, Services::mapInlineKeyboard($keyboard), $layout, 1, $parse_mode);
     }
 
-    // /**
-    //  * Метод удаления сообщений в чате для другого пользователя
-    //  *
-    //  * @param int $chat_id Идентификатор чата.
-    //  * @param string|array $message_id ID сообщения.
-    //  * 
-    //  */
-    // public function deleteOut($chat_id, $message_id)
-    // {
-    //     return $this->deleteMessage($chat_id, $message_id);
-    // }
+    /**
+     * Метод удаления сообщений в чате для другого пользователя
+     *
+     * @param int $chat_id Идентификатор чата.
+     * @param string|array $message_id ID сообщения.
+     * 
+     */
+    public function deleteOut($chat_id, $message_id)
+    {
+        return $this->deleteMessage($chat_id, $message_id);
+    }
 
-    // /**
-    //  * Метод удаления сообщений в чате для текущего пользователя
-    //  *
-    //  * @param string|array $message_id ID сообщения.
-    //  * 
-    //  */
-    // public function deleteSelf($message_id)
-    // {
-    //     return $this->deleteOut($this->getUserId(), $message_id);
-    // }
+    /**
+     * Метод удаления сообщений в чате для текущего пользователя
+     *
+     * @param string|array $message_id ID сообщения.
+     * 
+     */
+    public function deleteSelf($message_id)
+    {
+        return $this->deleteOut($this->getChatId, $message_id);
+    }
 
-    // /**
-    //  * Метод редактирования сообщения другому пользователю
-    //  *
-    //  * @param int $chat_id Идентификатор чата.
-    //  * @param string $message_id id сообщения
-    //  * @param string|array $message Текст сообщения.
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  * 
-    //  */
-    // public function editOut($chat_id, $message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
-    // {
-    //     $keyboard = $keyboard !== null ? $this->simpleKeyboard($keyboard) : $keyboard;
-    //     is_array($message) ? $message = $this->html($message) : $message;
-    //     $keyboard ? $keygrid = $this->grid($keyboard, $layout) : $keyboard;
-    //     $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
-    //     return $this->editMessage($chat_id, $message_id, $message, $keyboard ? $this->$type($keygrid) : $keyboard, $parse_mode);
-    // }
+    /**
+     * Метод редактирования сообщения другому пользователю
+     *
+     * @param int $chat_id Идентификатор чата.
+     * @param string $message_id id сообщения
+     * @param string|array $message Текст сообщения.
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
+     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
+     * 
+     */
+    public function editOut($chat_id, $message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    {
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        is_array($message) ? $message = Services::html($message) : $message;
+        $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
+        $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
+        return $this->editMessageText($chat_id, $message_id, $message, null, null, $parse_mode, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+    }
 
-    // /**
-    //  * Метод редактирования сообщения текущему пользователю
-    //  *
-    //  * @param string|array $message Текст сообщения.
-    //  * @param string $message_id id сообщения
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  * 
-    //  */
-    // public function editSelf($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
-    // {
-    //     return $this->editOut($this->getUserId(), $message_id, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
-    // }
+    /**
+     * Метод редактирования сообщения текущему пользователю
+     *
+     * @param string|array $message Текст сообщения.
+     * @param string $message_id id сообщения
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
+     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
+     * 
+     */
+    public function editSelf($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    {
+        return $this->editOut($this->getChatId, $message_id, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
+    }
 
-    // /**
-    //  * Метод редактирования разметки клавиатуры для другого пользователя
-    //  *
-    //  * @param int $chat_id Идентификатор чата.
-    //  * @param string $message_id id сообщения
-    //  * @param array $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * 
-    //  */
-    // public function editReplyMarkupOut($chat_id, $message_id, $keyboard, $layout = 2)
-    // {
-    //     $keyboard = $this->simpleKeyboard($keyboard);
-    //     $keyboard ? $keygrid = $this->grid($keyboard, $layout) : $keyboard;
-    //     return $this->editMessageReplyMarkup($chat_id, $message_id, $keyboard ? $this->inlineKeyboard($keygrid) : $keyboard);
-    // }
+    /**
+     * Метод редактирования сообщения текущему пользователю
+     *
+     * @param string|array $message Текст сообщения.
+     * @param string $message_id id сообщения
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
+     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
+     * 
+     */
+    public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    {
+        return $this->editOut($this->getChatId, $message_id, $message, Services::mapInlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
+    }
+
+    /**
+     * Метод редактирования разметки клавиатуры для другого пользователя
+     *
+     * @param int $chat_id Идентификатор чата.
+     * @param string $message_id id сообщения
+     * @param array $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * 
+     */
+    public function editReplyMarkupOut($chat_id, $message_id, $keyboard, $layout = 2)
+    {
+        $keyboard = Services::simpleKeyboard($keyboard);
+        $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
+        return $this->editMessageReplyMarkup(null, $chat_id, $message_id, $keyboard ? Services::inlineKeyboard($keygrid) : $keyboard);
+    }
 
     // /**
     //  * Метод редактирования разметки клавиатуры текущему пользователю

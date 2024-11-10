@@ -17,15 +17,15 @@ class Giveaway implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->chats = new Chat($request->chats) ?? [];
-        $this->winners_selection_date = $request->winners_selection_date ?? 0;
-        $this->winner_count = $request->winner_count ?? 0;
-        $this->only_new_members = $request->only_new_members ?? false;
-        $this->has_public_winners = $request->has_public_winners ?? false;
-        $this->prize_description = $request->prize_description ?? '';
-        $this->country_codes = $request->country_codes ?? [];
-        $this->prize_star_count = $request->prize_star_count ?? 0;
-        $this->premium_subscription_month_count = $request->premium_subscription_month_count ?? 0;
+        $this->chats = isset($request->chats) ? new Chat($request->chats) : [];
+        $this->winners_selection_date = isset($request->winners_selection_date) ? $request->winners_selection_date : 0;
+        $this->winner_count = isset($request->winner_count) ? $request->winner_count : 0;
+        $this->only_new_members = isset($request->only_new_members) ? $request->only_new_members : false;
+        $this->has_public_winners = isset($request->has_public_winners) ? $request->has_public_winners : false;
+        $this->prize_description = isset($request->prize_description) ? $request->prize_description : '';
+        $this->country_codes = isset($request->country_codes) ? $request->country_codes : [];
+        $this->prize_star_count = isset($request->prize_star_count) ? $request->prize_star_count : 0;
+        $this->premium_subscription_month_count = isset($request->premium_subscription_month_count) ? $request->premium_subscription_month_count : 0;
     }
 
     public function getChats()

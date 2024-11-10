@@ -10,8 +10,8 @@ class MaybeInaccessibleMessage implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->message = new Message($request->message ?? null);
-        $this->inaccessibleMessage = new InaccessibleMessage($request->inaccessibleMessage ?? null);
+        $this->message = isset($request->message) ? new Message($request->message) : null;
+        $this->inaccessibleMessage = isset($request->inaccessibleMessage) ? new InaccessibleMessage($request->inaccessibleMessage) : null;
     }
 
     public function getMessage()

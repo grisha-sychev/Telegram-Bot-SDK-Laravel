@@ -14,12 +14,12 @@ class Location implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->latitude = $request->latitude ?? null;
-        $this->longitude = $request->longitude ?? null;
-        $this->horizontal_accuracy = $request->horizontal_accuracy ?? null;
-        $this->live_period = $request->live_period ?? null;
-        $this->heading = $request->heading ?? null;
-        $this->proximity_alert_radius = $request->proximity_alert_radius ?? null;
+        $this->latitude = isset($request->latitude) ? $request->latitude : null;
+        $this->longitude = isset($request->longitude) ? $request->longitude : null;
+        $this->horizontal_accuracy = isset($request->horizontal_accuracy) ? $request->horizontal_accuracy : null;
+        $this->live_period = isset($request->live_period) ? $request->live_period : null;
+        $this->heading = isset($request->heading) ? $request->heading : null;
+        $this->proximity_alert_radius = isset($request->proximity_alert_radius) ? $request->proximity_alert_radius : null;
     }
 
     public function getLatitude()

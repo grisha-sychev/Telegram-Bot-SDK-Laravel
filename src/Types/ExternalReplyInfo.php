@@ -32,30 +32,31 @@ class ExternalReplyInfo implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->origin = new MessageOrigin($request->origin) ?? null;
-        $this->chat = new Chat($request->chat) ?? null;
-        $this->message_id = $request->message_id ?? null;
-        $this->link_preview_options = new LinkPreviewOptions($request->link_preview_options) ?? null;
-        $this->animation = new Animation($request->animation) ?? null;
-        $this->audio = new Audio($request->audio) ?? null;
-        $this->document = new Document($request->document) ?? null;
-        $this->paid_media = new PaidMediaInfo($request->paid_media) ?? null;
-        $this->photo = new PhotoSize($request->photo) ?? null;
-        $this->sticker = new Sticker($request->sticker) ?? null;
-        $this->story = new Story($request->story) ?? null;
-        $this->video = new Video($request->video) ?? null;
-        $this->video_note = new VideoNote($request->video_note) ?? null;
-        $this->voice = new Voice($request->voice) ?? null;
-        $this->has_media_spoiler = $request->has_media_spoiler ?? null;
-        $this->contact = new Contact($request->contact) ?? null;
-        $this->dice = new Dice($request->dice) ?? null;
-        $this->game = new Game($request->game) ?? null;
-        $this->giveaway = new Giveaway($request->giveaway) ?? null;
-        $this->giveaway_winners = new GiveawayWinners($request->giveaway_winners) ?? null;
-        $this->invoice = new Invoice($request->invoice) ?? null;
-        $this->location = new Location($request->location) ?? null;
-        $this->poll = new Poll($request->poll) ?? null;
-        $this->venue = new Venue($request->venue) ?? null;
+
+        $this->origin = isset($request->origin) ? new MessageOrigin($request->origin) : null;
+        $this->chat = isset($request->chat) ? new Chat($request->chat) : null;
+        $this->message_id = isset($request->message_id) ? $request->message_id : null;
+        $this->link_preview_options = isset($request->link_preview_options) ? new LinkPreviewOptions($request->link_preview_options) : null;
+        $this->animation = isset($request->animation) ? new Animation($request->animation) : null;
+        $this->audio = isset($request->audio) ? new Audio($request->audio) : null;
+        $this->document = isset($request->document) ? new Document($request->document) : null;
+        $this->paid_media = isset($request->paid_media) ? new PaidMediaInfo($request->paid_media) : null;
+        $this->photo = isset($request->photo) ? new PhotoSize($request->photo) : null;
+        $this->sticker = isset($request->sticker) ? new Sticker($request->sticker) : null;
+        $this->story = isset($request->story) ? new Story($request->story) : null;
+        $this->video = isset($request->video) ? new Video($request->video) : null;
+        $this->video_note = isset($request->video_note) ? new VideoNote($request->video_note) : null;
+        $this->voice = isset($request->voice) ? new Voice($request->voice) : null;
+        $this->has_media_spoiler = isset($request->has_media_spoiler) ? $request->has_media_spoiler : null;
+        $this->contact = isset($request->contact) ? new Contact($request->contact) : null;
+        $this->dice = isset($request->dice) ? new Dice($request->dice) : null;
+        $this->game = isset($request->game) ? new Game($request->game) : null;
+        $this->giveaway = isset($request->giveaway) ? new Giveaway($request->giveaway) : null;
+        $this->giveaway_winners = isset($request->giveaway_winners) ? new GiveawayWinners($request->giveaway_winners) : null;
+        $this->invoice = isset($request->invoice) ? new Invoice($request->invoice) : null;
+        $this->location = isset($request->location) ? new Location($request->location) : null;
+        $this->poll = isset($request->poll) ? new Poll($request->poll) : null;
+        $this->venue = isset($request->venue) ? new Venue($request->venue) : null;
     }
 
     public function getOrigin()

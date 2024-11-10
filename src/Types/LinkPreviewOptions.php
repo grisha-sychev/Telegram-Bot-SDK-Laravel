@@ -13,11 +13,11 @@ class LinkPreviewOptions implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->is_disabled = $request->is_disabled ?? null;
-        $this->url = $request->url ?? null;
-        $this->prefer_small_media = $request->prefer_small_media ?? null;
-        $this->prefer_large_media = $request->prefer_large_media ?? null;
-        $this->show_above_text = $request->show_above_text ?? null;
+        $this->is_disabled = isset($request->is_disabled) ? $request->is_disabled : null;
+        $this->url = isset($request->url) ? $request->url : null;
+        $this->prefer_small_media = isset($request->prefer_small_media) ? $request->prefer_small_media : null;
+        $this->prefer_large_media = isset($request->prefer_large_media) ? $request->prefer_large_media : null;
+        $this->show_above_text = isset($request->show_above_text) ? $request->show_above_text : null;
     }
 
     public function getIsDisabled()

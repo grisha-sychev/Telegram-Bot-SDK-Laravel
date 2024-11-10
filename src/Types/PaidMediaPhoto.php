@@ -11,7 +11,7 @@ class PaidMediaPhoto implements \Teg\Types\Interface\InitObject
     {
         $request = (object) $request;
         $this->type = 'photo';
-        $this->photo = new PhotoSize($request->photo) ?? [];
+        $this->photo = isset($request->photo) ? new PhotoSize($request->photo) : [];
     }
 
     public function getType()

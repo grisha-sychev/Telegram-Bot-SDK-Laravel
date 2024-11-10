@@ -27,6 +27,8 @@ class TegbotServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $routePath = base_path('routes/tegbot.php');
+
         $pathsToPublish = [
             __DIR__ . '/../../app' => app_path(),
             __DIR__ . '/../../config' => config_path(),
@@ -35,5 +37,12 @@ class TegbotServiceProvider extends ServiceProvider
         ];
 
         $this->publishes($pathsToPublish, "tegbot");
+
+        $this->loadRoutesFrom(base_path('routes/tegbot.php'));
+        
+        if (file_exists($routePath)) {
+            $this->loadRoutesFrom($routePath);
+        }
+
     }
 }

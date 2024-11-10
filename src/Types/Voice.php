@@ -13,11 +13,11 @@ class Voice implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->file_id = $request->file_id;
-        $this->file_unique_id = $request->file_unique_id;
-        $this->duration = $request->duration;
-        $this->mime_type = $request->mime_type ?? null;
-        $this->file_size = $request->file_size ?? null;
+        $this->file_id = isset($request->file_id) ? $request->file_id : null;
+        $this->file_unique_id = isset($request->file_unique_id) ? $request->file_unique_id : null;
+        $this->duration = isset($request->duration) ? $request->duration : null;
+        $this->mime_type = isset($request->mime_type) ? $request->mime_type : null;
+        $this->file_size = isset($request->file_size) ? $request->file_size : null;
     }
 
     public function getFileId()

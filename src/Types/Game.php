@@ -14,12 +14,12 @@ class Game implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->title = $request->title ?? '';
-        $this->description = $request->description ?? '';
-        $this->photo = new PhotoSize($request->photo) ?? [];
-        $this->text = $request->text ?? '';
-        $this->text_entities = new MessageEntity($request->text_entities) ?? [];
-        $this->animation = new Animation($request->animation) ?? null;
+        $this->title = isset($request->title) ? $request->title : '';
+        $this->description = isset($request->description) ? $request->description : '';
+        $this->photo = isset($request->photo) ? new PhotoSize($request->photo) : [];
+        $this->text = isset($request->text) ? $request->text : '';
+        $this->text_entities = isset($request->text_entities) ? new MessageEntity($request->text_entities) : [];
+        $this->animation = isset($request->animation) ? new Animation($request->animation) : null;
     }
 
     public function getTitle()

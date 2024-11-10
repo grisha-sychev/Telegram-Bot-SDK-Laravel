@@ -10,8 +10,8 @@ class WebAppData implements \Teg\Types\Interface\InitObject
     public function __construct($request)
     {
         $request = (object) $request;
-        $this->data = $request->data ?? '';
-        $this->button_text = $request->button_text ?? '';
+        $this->data = isset($request->data) ? $request->data : '';
+        $this->button_text = isset($request->button_text) ? $request->button_text : '';
     }
 
     public function getData()
