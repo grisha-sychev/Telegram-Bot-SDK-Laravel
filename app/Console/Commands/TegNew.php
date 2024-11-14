@@ -72,11 +72,6 @@ class TegNew extends Command
           
           class {$botNameCapitalized} extends AdstractBot
           {
-              public function __construct()
-              {
-                  parent::__construct();
-              }
-          
               public function main()
               {
                   \$this->command("start", function () {

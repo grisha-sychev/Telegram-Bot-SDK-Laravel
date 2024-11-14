@@ -18,6 +18,6 @@ Route::post('/bot/{token}', function ($token) {
     if (!class_exists($class)) {
         return response()->json(['error' => 'Bot class not found'], 404);
     }
-
-    return (new $class())->main();
+    
+    return (new $class())->run()->main();
 });

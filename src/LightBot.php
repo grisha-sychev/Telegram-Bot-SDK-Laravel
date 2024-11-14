@@ -18,8 +18,6 @@ class LightBot extends Skeleton
 
     public function __construct()
     {
-        $this->run();
-
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
 
@@ -39,12 +37,13 @@ class LightBot extends Skeleton
      *
      * @return void
      */
-    private function run()
+    public function run()
     {
         $calledClass = get_called_class();
         $namespaceParts = explode('\\', $calledClass);
         $className = $namespaceParts[count($namespaceParts) - 1];
         $this->bot = strtolower(str_replace('Bot', '', $className));
+        return $this;
     }
 
     /**
