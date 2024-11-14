@@ -25,7 +25,6 @@ class LightBot extends Skeleton
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
         $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
         $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
-
         $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
     }
 
@@ -50,14 +49,12 @@ class LightBot extends Skeleton
     /**
      * Отправляет отладочную информацию о текущем запросе в формате JSON.
      *
-     * Метод `dd` сериализует текущий запрос в формат JSON с параметром `JSON_PRETTY_PRINT` для удобного чтения
-     * и отправляет его самому себе с помощью метода `sendSelf`.
-     *
      * @return void
      */
-    public function dd()
+    public function debug()
     {
         $this->sendSelf("<pre>" . json_encode($this->request(), JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE) . "</pre>");
+        exit;
     }
 
     /**
