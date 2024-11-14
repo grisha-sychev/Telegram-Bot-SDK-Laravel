@@ -9,16 +9,24 @@ use Teg\Support\Facades\Services;
 class LightBot extends Skeleton
 {
     public $getMessage;
+    public $getCallback;
+    public $getCallbackData;
     public $getMessageId;
+    public $getMessageText;
     public $getChatId;
 
     public function __construct()
     {
         $this->run();
 
+        $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
-        $this->getMessageId = $this->getMessage()->getMessageId();
-        $this->getChatId = $this->getMessage->getChat()->getId();
+
+        $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
+        $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
+        $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
+
+        $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
     }
 
     /**
@@ -45,16 +53,15 @@ class LightBot extends Skeleton
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int $layout Число делений или массив с ручным расположением.
      * @param int $type_keyboard Тип каливатуры 0 - keyboard 1 - inlineKeyboard
-     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      *
      */
-    public function sendOut($id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    public function sendOut($id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
         $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
-        return $this->sendMessage($id, $message, null, null, $parse_mode, null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+        return $this->sendMessage($id, $message, null, null, "HTML", null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
     }
 
     /**
@@ -64,12 +71,11 @@ class LightBot extends Skeleton
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int|array $layout Число делений или массив с ручным расположением.
      * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
-     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      * 
      */
-    public function sendSelf($message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    public function sendSelf($message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        return $this->sendOut($this->getChatId, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
+        return $this->sendOut($this->getChatId, $message, $keyboard, $layout, $type_keyboard, "HTML");
     }
 
     /**
@@ -78,12 +84,11 @@ class LightBot extends Skeleton
      * @param string|array $message Текст сообщения.
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int $layout Число делений или массив с ручным расположением.
-     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      * 
      */
-    public function sendSelfInline($message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
+    public function sendSelfInline($message, $keyboard = null, $layout = 2)
     {
-        return $this->sendSelf($message, Services::mapInlineKeyboard($keyboard), $layout, 1, $parse_mode);
+        return $this->sendSelf($message, $keyboard, $layout, 1);
     }
 
     /**
@@ -93,12 +98,11 @@ class LightBot extends Skeleton
      * @param string|array $message Текст сообщения.
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int $layout Число делений или массив с ручным расположением.
-     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      * 
      */
-    public function sendOutInline($id, $message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
+    public function sendOutInline($id, $message, $keyboard = null, $layout = 2)
     {
-        return $this->sendOut($id, $message, Services::mapInlineKeyboard($keyboard), $layout, 1, $parse_mode);
+        return $this->sendOut($id, $message, Services::mapInlineKeyboard($keyboard), $layout, 1);
     }
 
     /**
@@ -333,53 +337,53 @@ class LightBot extends Skeleton
     //     return $this->sendInvoiceOut($this->getUserId(), $title, $description, $payload, $provider_token, $currency, $prices, $max_tip_amount, $suggested_tip_amounts, $start_parameter, $provider_data, $photo_url, $photo_size, $photo_width, $photo_height, $need_name, $need_phone_number, $need_email, $need_shipping_address, $send_phone_number_to_provider, $send_email_to_provider, $is_flexible, $disable_notification, $protect_content, $message_effect_id, $reply_parameters, $reply_markup);
     // }
 
-    // /**
-    //  * Определяет команду для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения или callback.
-    //  *
-    //  * @param string|array $command Команда, начинающаяся с символа "/" (например, "/start") или массив команд.
-    //  * @param Closure $callback Функция-обработчик для выполнения, если команда или callback совпадают.
-    //  *
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function command($command, $callback)
-    // {
-    //     // Приводим команду к массиву, если это строка
-    //     $commands = is_array($command) ? $command : [$command];
+    /**
+     * Определяет команду для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения или callback.
+     *
+     * @param string|array $command Команда, начинающаяся с символа "/" (например, "/start") или массив команд.
+     * @param Closure $callback Функция-обработчик для выполнения, если команда или callback совпадают.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function command($command, $callback)
+    {
+        // Приводим команду к массиву, если это строка
+        $commands = is_array($command) ? $command : [$command];
 
-    //     // Преобразуем команды, добавляя "/" к каждой, если необходимо
-    //     $commands = array_map(function ($cmd) {
-    //         return "/" . ltrim($cmd, '/');
-    //     }, $commands);
+        // Преобразуем команды, добавляя "/" к каждой, если необходимо
+        $commands = array_map(function ($cmd) {
+            return "/" . ltrim($cmd, '/');
+        }, $commands);
 
-    //     // Привязываем callback к текущему объекту
-    //     $callback = $callback->bindTo($this, $this);
+        // Привязываем callback к текущему объекту
+        $callback = $callback->bindTo($this, $this);
 
-    //     // Получаем текст сообщения и данные callback
-    //     $messageText = $this->getMessageText();
-    //     $cb = $this->getCallbackData();
+        // Получаем текст сообщения и данные callback
+        $messageText = $this->getMessageText;
+        $cb = $this->getCallbackData;
 
-    //     // Проверка для текста сообщения
-    //     foreach ($commands as $cmd) {
-    //         if (strpos($messageText, $cmd) === 0) {
-    //             $arguments = Services::getArguments($messageText);
-    //             $callback($arguments); // Завершаем выполнение после нахождения совпадения
-    //             return;
-    //         }
-    //     }
+        // Проверка для текста сообщения
+        foreach ($commands as $cmd) {
+            if (strpos($messageText, $cmd) === 0) {
+                $arguments = Services::getArguments($messageText);
+                $callback($arguments); // Завершаем выполнение после нахождения совпадения
+                return;
+            }
+        }
 
-    //     // Проверка для callback данных
-    //     if ($cb && is_object($cb)) {
-    //         foreach ($commands as $cmd) {
-    //             if (strpos($cb->callback_data, $cmd) === 0) { // сравниваем с callback_data
-    //                 $arguments = Services::getArguments($cb->callback_data);
-    //                 $callback($arguments); // Завершаем выполнение после нахождения совпадения
-    //                 return;
-    //             }
-    //         }
-    //     }
+        // Проверка для callback данных
+        if ($cb && is_object($cb)) {
+            foreach ($commands as $cmd) {
+                if (strpos($cb->callback_data, $cmd) === 0) { // сравниваем с callback_data
+                    $arguments = Services::getArguments($cb->callback_data);
+                    $callback($arguments); // Завершаем выполнение после нахождения совпадения
+                    return;
+                }
+            }
+        }
 
-    //     return null;
-    // }
+        return null;
+    }
 
     // /**
     //  * Определяет обработчик для события pre-checkout.
