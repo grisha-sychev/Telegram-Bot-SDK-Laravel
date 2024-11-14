@@ -263,7 +263,7 @@ class Services
      * @param string $text Текст, в котором будет производиться поиск.
      * @return array|null Возвращает массив совпадений, если они найдены, или null, если совпадений не найдено.
      */
-    public function findMatch($data, $array)
+    public static function findMatch($data, $array)
     {
         foreach ($array as $value) {
             if (stripos($data, $value) !== false) {

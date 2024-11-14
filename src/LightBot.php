@@ -12,6 +12,7 @@ class LightBot extends Skeleton
     public $getCallback;
     public $getCallbackData;
     public $getMessageId;
+    public $getMessageFromId;
     public $getMessageText;
     public $getChatId;
 
@@ -24,6 +25,7 @@ class LightBot extends Skeleton
 
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
+        $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
         $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
 
         $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
@@ -178,7 +180,7 @@ class LightBot extends Skeleton
      */
     public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
     {
-        return $this->editOut($this->getChatId, $message_id, $message, Services::mapInlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
+        return $this->editOut($this->getChatId, $message_id, $message, Services::inlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
     }
 
     /**
@@ -197,78 +199,196 @@ class LightBot extends Skeleton
         return $this->editMessageReplyMarkup(null, $chat_id, $message_id, $keyboard ? Services::inlineKeyboard($keygrid) : $keyboard);
     }
 
-    // /**
-    //  * Метод редактирования разметки клавиатуры текущему пользователю
+    /**
+     * Метод редактирования разметки клавиатуры текущему пользователю
+     *
+     * @param string $message_id id сообщения
+     * @param array $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * 
+     */
+    public function editReplyMarkupSelf($message_id, $keyboard = null, $layout = 2)
+    {
+        return $this->editReplyMarkupOut($this->getChatId, $message_id, $keyboard, $layout);
+    }
+
+    /**
+     * Определяет команду для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения или callback.
+     *
+     * @param string|array $command Команда, начинающаяся с символа "/" (например, "/start") или массив команд.
+     * @param Closure $callback Функция-обработчик для выполнения, если команда или callback совпадают.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function command($command, $callback)
+    {
+        // Приводим команду к массиву, если это строка
+        $commands = is_array($command) ? $command : [$command];
+
+        // Преобразуем команды, добавляя "/" к каждой, если необходимо
+        $commands = array_map(function ($cmd) {
+            return "/" . ltrim($cmd, '/');
+        }, $commands);
+
+        // Привязываем callback к текущему объекту
+        $callback = $callback->bindTo($this, $this);
+
+        // Получаем текст сообщения и данные callback
+        $messageText = $this->getMessageText;
+        $cb = $this->getCallbackData;
+
+        // Проверка для текста сообщения
+        foreach ($commands as $cmd) {
+            if (strpos($messageText, $cmd) === 0) {
+                $arguments = Services::getArguments($messageText);
+                $callback($arguments); // Завершаем выполнение после нахождения совпадения
+                return;
+            }
+        }
+
+        // Проверка для callback данных
+        if ($cb && is_object($cb)) {
+            foreach ($commands as $cmd) {
+                if (strpos($cb->callback_data, $cmd) === 0) { // сравниваем с callback_data
+                    $arguments = Services::getArguments($cb->callback_data);
+                    $callback($arguments); // Завершаем выполнение после нахождения совпадения
+                    return;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Определяет сообщение для бота и выполняет соответствующий обработчик, если сообщение совпадает с паттерном.
+     *
+     * @param string|array $pattern Это строка или массив строк/регулярных выражений, по которым будет искать совпадение с сообщением.
+     * @param Closure $callback Функция-обработчик для выполнения, если сообщение совпадает с паттерном.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function message($pattern, $callback)
+    {
+        return Services::pattern($pattern, $this->getMessageText, $callback);
+    }
+
+    /**
+     * Определяет сообщение от пользователя и выполняет ошибку.
+     *
+     * @param mixed $message Любое сообщение кроме команды.
+     * @param array|null $array Данные
+     * @param Closure $callback Функция-обработчик для выполнения, если команда совпадает.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function error($message, $array, $callback)
+    {
+        $callback = $callback->bindTo($this);
+
+        if ($array === null) {
+            if ($message === $this->getMessageText) {
+                $callback();
+            }
+        } else {
+            if (Services::findMatch($message, $array)) {
+                $callback();
+            }
+        }
+    }
+
+    /**
+     * Определяет действие для бота и выполняет соответствующий обработчик, если текст сообщения не начинается с "/".
+     *
+     * @param Closure $callback Функция-обработчик для выполнения, если текст сообщения не является командой.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function anyMessage($callback)
+    {
+        $text = $this->getMessageText;
+        $callbackData = $this->getCallbackData;
+        if (mb_substr($text, 0, 1) !== "/" && !$callbackData) {
+            return $callback($text);
+        }
+    }
+
+        // /**
+    //  * Определяет обработчик для события pre-checkout.
     //  *
-    //  * @param string $message_id id сообщения
-    //  * @param array $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
+    //  * @param Closure $callback Функция-обработчик для выполнения, если событие pre-checkout происходит.
+    //  *
+    //  * @return mixed Результат выполнения функции-обработчика.
+    //  */
+    // public function preCheckout($callback)
+    // {
+    //     $preCheckoutQuery = $this->getPreCheckoutData();
+
+    //     if ($preCheckoutQuery !== null) {
+    //         $callback = $callback->bindTo($this, $this);
+    //         return $callback((object) $preCheckoutQuery);
+    //     }
+
+    //     return null;
+    // }
+
+    // /**
+    //  * Обрабатывает запрос pre-checkout и автоматически подтверждает его.
+    //  *
+    //  * @param bool $ok Указывает, следует ли подтвердить запрос pre-checkout (по умолчанию: true).
+    //  * @param string|null $error_message Сообщение об ошибке в читаемом виде, объясняющее причину невозможности продолжить оформление заказа (обязательно, если ok равно False).
+    //  * @return mixed Результат выполнения функции-обработчика.
+    //  */
+    // public function preCheckoutOk($ok = true, $error_message = null)
+    // {
+    //     $data = (object) $this->getPreCheckoutData();
+    //     return $this->answerPreCheckoutQuery(isset($data->id) ? $data->id : null, $ok, $error_message);
+    // }
+
+    // /**
+    //  * Определяет callback для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения.
+    //  *
+    //  * @param string|array $pattern  Это строка или массив строк, по которым будет искать какой callback выполнить, например hello{id} или greet{name}.
+    //  * @param Closure $callback Функция-обработчик для выполнения, если команда совпадает с паттерном.
+    //  * 
+    //  * @return mixed Результат выполнения функции-обработчика.
+    //  */
+    // public function callback($pattern, $callback)
+    // {
+    //     $cb = $this->getCallbackData();
+
+    //     // Добавляем проверку на существование и тип переменной $cb
+    //     if ($cb && is_object($cb)) {
+    //         return $this->pattern($pattern, $cb->callback_data, $callback, function () use ($cb) {
+    //             $this->answerCallbackQuery($cb->callback_query_id);
+    //         });
+    //     }
+
+    //     return null;
+    // }
+
+    // /**
+    //  * Метод для блокировки медиа
+    //  *
+    //  * @param callback $callback
     //  * 
     //  */
-    // public function editReplyMarkupSelf($message_id, $keyboard = null, $layout = 2)
+    // public function ignoreMedia($callback)
     // {
-    //     return $this->editReplyMarkupOut($this->getUserId(), $message_id, $keyboard, $layout);
+    //     if ($this->getMessageText) {
+    //         if (
+    //             method_exists($this, 'getMedia') &&
+    //             in_array(true, array_map(function ($value) {
+    //                 return !is_null($value);
+    //             }, (array) $this->getMedia()), true)
+    //         ) {
+    //             $callback();
+    //             exit;
+    //         }
+    //     }
     // }
 
-    // /**
-    //  * Метод редактирования сообщения текущему пользователю использует inlineKeyboard
-    //  *
-    //  * @param string $message_id id сообщения
-    //  * @param string|array $message Текст сообщения.
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  * 
-    //  */
-    // public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
-    // {
-    //     return $this->editSelf($message_id, $message, $keyboard, $layout, 1, $parse_mode);
-    // }
-
-    // /**
-    //  * Метод редактирования сообщения текущему пользователю с использованием с возвратом сallback
-    //  *
-    //  * @param string|array $message Текст сообщения.
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  * 
-    //  */
-    // public function editSelfCallback($message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
-    // {
-    //     return $this->editSelf($this->getMessageId(), $message, $keyboard, $layout, 0, $parse_mode);
-    // }
-
-    // /**
-    //  * Метод редактирования сообщения текущему пользователю с использованием inlineKeyboard с возвратом сallback
-    //  *
-    //  * @param string|array $message Текст сообщения.
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  * 
-    //  */
-    // public function editSelfInlineCallback($message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
-    // {
-    //     return $this->editSelfInline($this->getMessageId(), $message, $keyboard, $layout, $parse_mode);
-    // }
-
-    // /**
-    //  * Метод отправки сообщения другому пользователю использует inlineKeyboard
-    //  *
-    //  * @param int $id Идентификатор пользователя.
-    //  * @param string $message Текст сообщения.
-    //  * @param array|null $keyboard Клавиатура для сообщения (необязательно).
-    //  * @param int $layout Число делений или массив с ручным расположением.
-    //  * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
-    //  *
-    //  */
-    // public function sendOutInline($id, $message, $keyboard = null, $layout = 2, $parse_mode = "HTML")
-    // {
-    //     return $this->sendOut($id, $message, $keyboard, $layout, 1, $parse_mode);
-    // }
-
-    // /**
+        // /**
     //  * Отправляет счет самому себе.
     //  *
     //  * @param int $chat_id Идентификатор чата.
@@ -335,179 +455,5 @@ class LightBot extends Skeleton
     // public function sendInvoiceSelf($title, $description, $payload, $provider_token, $currency, $prices, $max_tip_amount = null, $suggested_tip_amounts = null, $start_parameter = null, $provider_data = null, $photo_url = null, $photo_size = null, $photo_width = null, $photo_height = null, $need_name = false, $need_phone_number = false, $need_email = false, $need_shipping_address = false, $send_phone_number_to_provider = false, $send_email_to_provider = false, $is_flexible = false, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
     // {
     //     return $this->sendInvoiceOut($this->getUserId(), $title, $description, $payload, $provider_token, $currency, $prices, $max_tip_amount, $suggested_tip_amounts, $start_parameter, $provider_data, $photo_url, $photo_size, $photo_width, $photo_height, $need_name, $need_phone_number, $need_email, $need_shipping_address, $send_phone_number_to_provider, $send_email_to_provider, $is_flexible, $disable_notification, $protect_content, $message_effect_id, $reply_parameters, $reply_markup);
-    // }
-
-    /**
-     * Определяет команду для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения или callback.
-     *
-     * @param string|array $command Команда, начинающаяся с символа "/" (например, "/start") или массив команд.
-     * @param Closure $callback Функция-обработчик для выполнения, если команда или callback совпадают.
-     *
-     * @return mixed Результат выполнения функции-обработчика.
-     */
-    public function command($command, $callback)
-    {
-        // Приводим команду к массиву, если это строка
-        $commands = is_array($command) ? $command : [$command];
-
-        // Преобразуем команды, добавляя "/" к каждой, если необходимо
-        $commands = array_map(function ($cmd) {
-            return "/" . ltrim($cmd, '/');
-        }, $commands);
-
-        // Привязываем callback к текущему объекту
-        $callback = $callback->bindTo($this, $this);
-
-        // Получаем текст сообщения и данные callback
-        $messageText = $this->getMessageText;
-        $cb = $this->getCallbackData;
-
-        // Проверка для текста сообщения
-        foreach ($commands as $cmd) {
-            if (strpos($messageText, $cmd) === 0) {
-                $arguments = Services::getArguments($messageText);
-                $callback($arguments); // Завершаем выполнение после нахождения совпадения
-                return;
-            }
-        }
-
-        // Проверка для callback данных
-        if ($cb && is_object($cb)) {
-            foreach ($commands as $cmd) {
-                if (strpos($cb->callback_data, $cmd) === 0) { // сравниваем с callback_data
-                    $arguments = Services::getArguments($cb->callback_data);
-                    $callback($arguments); // Завершаем выполнение после нахождения совпадения
-                    return;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    // /**
-    //  * Определяет обработчик для события pre-checkout.
-    //  *
-    //  * @param Closure $callback Функция-обработчик для выполнения, если событие pre-checkout происходит.
-    //  *
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function preCheckout($callback)
-    // {
-    //     $preCheckoutQuery = $this->getPreCheckoutData();
-
-    //     if ($preCheckoutQuery !== null) {
-    //         $callback = $callback->bindTo($this, $this);
-    //         return $callback((object) $preCheckoutQuery);
-    //     }
-
-    //     return null;
-    // }
-
-    // /**
-    //  * Обрабатывает запрос pre-checkout и автоматически подтверждает его.
-    //  *
-    //  * @param bool $ok Указывает, следует ли подтвердить запрос pre-checkout (по умолчанию: true).
-    //  * @param string|null $error_message Сообщение об ошибке в читаемом виде, объясняющее причину невозможности продолжить оформление заказа (обязательно, если ok равно False).
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function preCheckoutOk($ok = true, $error_message = null)
-    // {
-    //     $data = (object) $this->getPreCheckoutData();
-    //     return $this->answerPreCheckoutQuery(isset($data->id) ? $data->id : null, $ok, $error_message);
-    // }
-
-    // /**
-    //  * Определяет callback для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения.
-    //  *
-    //  * @param string|array $pattern  Это строка или массив строк, по которым будет искать какой callback выполнить, например hello{id} или greet{name}.
-    //  * @param Closure $callback Функция-обработчик для выполнения, если команда совпадает с паттерном.
-    //  * 
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function callback($pattern, $callback)
-    // {
-    //     $cb = $this->getCallbackData();
-
-    //     // Добавляем проверку на существование и тип переменной $cb
-    //     if ($cb && is_object($cb)) {
-    //         return $this->pattern($pattern, $cb->callback_data, $callback, function () use ($cb) {
-    //             $this->answerCallbackQuery($cb->callback_query_id);
-    //         });
-    //     }
-
-    //     return null;
-    // }
-
-    // /**
-    //  * Определяет сообщение для бота и выполняет соответствующий обработчик, если сообщение совпадает с паттерном.
-    //  *
-    //  * @param string|array $pattern Это строка или массив строк/регулярных выражений, по которым будет искать совпадение с сообщением.
-    //  * @param Closure $callback Функция-обработчик для выполнения, если сообщение совпадает с паттерном.
-    //  *
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function message($pattern, $callback)
-    // {
-    //     return $this->pattern($pattern, $this->getMessageText(), $callback);
-    // }
-    // /**
-    //  * Определяет сообщение от пользователя и выполняет ошибку.
-    //  *
-    //  * @param mixed $message Любое сообщение кроме команды.
-    //  * @param array|null $array Данные
-    //  * @param Closure $callback Функция-обработчик для выполнения, если команда совпадает.
-    //  *
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function error($message, $array, $callback)
-    // {
-    //     $callback = $callback->bindTo($this);
-
-    //     if ($array === null) {
-    //         if ($message === $this->getMessageText()) {
-    //             $callback();
-    //         }
-    //     } else {
-    //         if ($this->findMatch($message, $array)) {
-    //             $callback();
-    //         }
-    //     }
-    // }
-
-    // /**
-    //  * Определяет действие для бота и выполняет соответствующий обработчик, если текст сообщения не начинается с "/".
-    //  *
-    //  * @param Closure $callback Функция-обработчик для выполнения, если текст сообщения не является командой.
-    //  *
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function anyMessage($callback)
-    // {
-    //     $text = $this->getMessageText();
-    //     $callbackData = $this->getCallbackData();
-    //     if (mb_substr($text, 0, 1) !== "/" && !$callbackData) {
-    //         return $callback($text);
-    //     }
-    // }
-    // /**
-    //  * Метод для блокировки медиа
-    //  *
-    //  * @param callback $callback
-    //  * 
-    //  */
-    // public function ignoreMedia($callback)
-    // {
-    //     if ($this->getMessageText()) {
-    //         if (
-    //             method_exists($this, 'getMedia') &&
-    //             in_array(true, array_map(function ($value) {
-    //                 return !is_null($value);
-    //             }, (array) $this->getMedia()), true)
-    //         ) {
-    //             $callback();
-    //             exit;
-    //         }
-    //     }
     // }
 }
