@@ -332,7 +332,7 @@ class Message implements InitObject
         return $this->paid_media;
     }
 
-    public function getPhoto(): ?array
+    public function getPhoto(): ?object
     {
         return $this->photo;
     }

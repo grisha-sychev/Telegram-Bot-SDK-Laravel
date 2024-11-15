@@ -9,6 +9,10 @@ use Teg\Support\Facades\Services;
 class LightBot extends Skeleton
 {
     public $getMessage;
+    public $getVideo;
+    public $getVideoId;
+    public $getPhoto;
+    public $getPhotoId;
     public $getCallback;
     public $getCallbackData;
     public $getMessageId;
@@ -20,12 +24,16 @@ class LightBot extends Skeleton
     {
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
+        $this->getVideo = $this->getMessage->getVideo();
+        $this->getPhoto = $this->getMessage->getPhoto();
 
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
+        $this->getVideoId = isset($this->getVideo) ? $this->getVideo->getFileId() : null;
         $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
         $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
         $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
+
     }
 
     /**
@@ -88,6 +96,102 @@ class LightBot extends Skeleton
     public function sendSelf($message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
         return $this->sendOut($this->getChatId, $message, $keyboard, $layout, $type_keyboard, "HTML");
+    }
+
+    /**
+     * Метод отправки фото другому пользователю
+     *
+     * @param int $chat_id Идентификатор чата.
+     * @param string $photo URL или файл фото.
+     * @param string|null $caption Подпись к фото (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип клавиатуры 0 - keyboard 1 - inlineKeyboard
+     * 
+     */
+    public function sendOutPhoto($chat_id, $photo, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
+    {
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
+        $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
+        return $this->sendPhoto($chat_id, $photo, $caption, 'HTML', null, null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+    }
+
+    /**
+     * Метод отправки фото текущему пользователю
+     *
+     * @param string $photo URL или файл фото.
+     * @param string|null $caption Подпись к фото (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип клавиатуры 0 - keyboard 1 - inlineKeyboard
+     * 
+     */
+    public function sendSelfPhoto($photo, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
+    {
+        return $this->sendOutPhoto($this->getChatId, $photo, $caption, $keyboard, $layout, $type_keyboard);
+    }
+
+    /**
+     * Метод отправки фото текущему пользователю
+     *
+     * @param string $photo URL или файл фото.
+     * @param string|null $caption Подпись к фото (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * 
+     */
+    public function sendSelfPhotoInline($photo, $caption = null, $keyboard = null, $layout = 2)
+    {
+        return $this->sendOutPhoto($this->getChatId, $photo, $caption, $keyboard, $layout, 1);
+    }
+
+    /**
+     * Метод отправки видео другому пользователю
+     *
+     * @param int $chat_id Идентификатор чата.
+     * @param string $video URL или файл видео.
+     * @param string|null $caption Подпись к видео (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип клавиатуры 0 - keyboard 1 - inlineKeyboard
+     * 
+     */
+    public function sendOutVideo($chat_id, $video, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
+    {
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
+        $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
+        return $this->sendVideo($chat_id, $video, null, null, null, null, null, null, $caption, 'HTML', null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+    }
+
+    /**
+     * Метод отправки видео текущему пользователю
+     *
+     * @param string $video URL или файл видео.
+     * @param string|null $caption Подпись к видео (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * @param int $type_keyboard Тип клавиатуры 0 - keyboard 1 - inlineKeyboard
+     * 
+     */
+    public function sendSelfVideo($video, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
+    {
+        return $this->sendOutVideo($this->getChatId, $video, $caption, $keyboard, $layout, $type_keyboard);
+    }
+
+    /**
+     * Метод отправки видео текущему пользователю
+     *
+     * @param string $video URL или файл видео.
+     * @param string|null $caption Подпись к видео (необязательно).
+     * @param array|null $keyboard Клавиатура для сообщения (необязательно).
+     * @param int $layout Число делений или массив с ручным расположением.
+     * 
+     */
+    public function sendSelfVideoInline($video, $caption = null, $keyboard = null, $layout = 2)
+    {
+        return $this->sendOutVideo($this->getChatId, $video, $caption, $keyboard, $layout, 1);
     }
 
     /**
