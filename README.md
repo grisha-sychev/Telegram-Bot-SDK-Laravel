@@ -12,7 +12,7 @@ composer require tegbot/tegbot
 Для публикации ассетов используйте команду:
 
 ```bash
-php artisan vendor:publish --tag=tegbot
+php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 ```
 
 ## Создание бота
