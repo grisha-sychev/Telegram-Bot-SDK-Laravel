@@ -37,8 +37,6 @@ class TegbotServiceProvider extends ServiceProvider
         ];
 
         $this->publishes($pathsToPublish, "tegbot");
-
-        $this->loadRoutesFrom(base_path('routes/tegbot.php'));
         
         if (file_exists($routePath)) {
             $this->loadRoutesFrom($routePath);
