@@ -19,6 +19,7 @@ class User implements \Teg\Types\Interface\InitObject
     private ?bool $has_main_web_app = null;
 
     public function __construct($request) {
+        $request = (object) $request;
         $this->id = isset($request->id) ? $request->id : 0;
         $this->is_bot = isset($request->is_bot) ? $request->is_bot : false;
         $this->first_name = isset($request->first_name) ? $request->first_name : '';

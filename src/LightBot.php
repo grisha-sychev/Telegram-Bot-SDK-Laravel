@@ -24,12 +24,9 @@ class LightBot extends Skeleton
     {
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
-        // $this->getVideo = $this->getMessage->getVideo();
-        // $this->getPhoto = $this->getMessage->getPhoto();
 
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
-        // $this->getVideoId = isset($this->getVideo) ? $this->getVideo->getFileId() : null;
         $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
         $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
         $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
@@ -59,9 +56,11 @@ class LightBot extends Skeleton
      *
      * @return void
      */
-    public function debug()
+    public function debug($data = null)
     {
-        $this->sendSelf("<pre>" . json_encode($this->request(), JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE) . "</pre>");
+        $data = $data ?? $this->request();
+        
+        $this->sendSelf("<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
         exit;
     }
 
