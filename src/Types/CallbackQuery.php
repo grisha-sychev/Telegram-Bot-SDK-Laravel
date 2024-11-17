@@ -29,12 +29,12 @@ class CallbackQuery implements \Teg\Types\Interface\InitObject
         return $this->id;
     }
 
-    public function getFrom()
+    public function getFrom(): ?User
     {
         return $this->from;
     }
 
-    public function getMessage()
+    public function getMessage(): ?MaybeInaccessibleMessage
     {
         return $this->message;
     }

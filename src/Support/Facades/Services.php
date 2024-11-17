@@ -2,6 +2,10 @@
 
 namespace Teg\Support\Facades;
 
+use Closure;
+use stdClass;
+
+
 class Services
 {
     /**
@@ -188,7 +192,7 @@ class Services
      */
     public function blankRequest($request)
     {
-        return ($request instanceof \stdClass);
+        return ($request instanceof stdClass);
     }
 
     /**
@@ -226,7 +230,7 @@ class Services
     {
         // Приводим паттерн к массиву, если это строка
         $patterns = is_array($pattern) ? $pattern : [$pattern];
-
+ 
         // Пробегаемся по каждому паттерну
         foreach ($patterns as $singlePattern) {
             // Проверяем, является ли паттерн регулярным выражением

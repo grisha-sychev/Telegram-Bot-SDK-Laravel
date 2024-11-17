@@ -2,9 +2,9 @@
 
 namespace Teg;
 
+use Closure;
 use Teg\Api\Skeleton;
 use Teg\Support\Facades\Services;
-
 
 class LightBot extends Skeleton
 {
@@ -18,19 +18,18 @@ class LightBot extends Skeleton
     public $getMessageId;
     public $getMessageFromId;
     public $getMessageText;
-    public $getChatId;
+    public $getUserId;
 
     public function __construct()
     {
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
 
+        $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
+
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
         $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
-        $this->getChatId = isset($this->getMessage) ? $this->getMessage->getChat()->getId() : null;
-        $this->getCallbackData = isset($this->getCallback) ? $this->getCallback->getData() : null;
-
     }
 
     /**
@@ -59,7 +58,7 @@ class LightBot extends Skeleton
     public function debug($data = null)
     {
         $data = $data ?? $this->request();
-        
+
         $this->sendSelf("<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
         exit;
     }
@@ -94,7 +93,7 @@ class LightBot extends Skeleton
      */
     public function sendSelf($message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        return $this->sendOut($this->getChatId, $message, $keyboard, $layout, $type_keyboard, "HTML");
+        return $this->sendOut($this->getUserId, $message, $keyboard, $layout, $type_keyboard, "HTML");
     }
 
     /**
@@ -128,7 +127,7 @@ class LightBot extends Skeleton
      */
     public function sendSelfPhoto($photo, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        return $this->sendOutPhoto($this->getChatId, $photo, $caption, $keyboard, $layout, $type_keyboard);
+        return $this->sendOutPhoto($this->getUserId, $photo, $caption, $keyboard, $layout, $type_keyboard);
     }
 
     /**
@@ -142,7 +141,7 @@ class LightBot extends Skeleton
      */
     public function sendSelfPhotoInline($photo, $caption = null, $keyboard = null, $layout = 2)
     {
-        return $this->sendOutPhoto($this->getChatId, $photo, $caption, $keyboard, $layout, 1);
+        return $this->sendOutPhoto($this->getUserId, $photo, $caption, $keyboard, $layout, 1);
     }
 
     /**
@@ -176,7 +175,7 @@ class LightBot extends Skeleton
      */
     public function sendSelfVideo($video, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        return $this->sendOutVideo($this->getChatId, $video, $caption, $keyboard, $layout, $type_keyboard);
+        return $this->sendOutVideo($this->getUserId, $video, $caption, $keyboard, $layout, $type_keyboard);
     }
 
     /**
@@ -190,7 +189,7 @@ class LightBot extends Skeleton
      */
     public function sendSelfVideoInline($video, $caption = null, $keyboard = null, $layout = 2)
     {
-        return $this->sendOutVideo($this->getChatId, $video, $caption, $keyboard, $layout, 1);
+        return $this->sendOutVideo($this->getUserId, $video, $caption, $keyboard, $layout, 1);
     }
 
     /**
@@ -240,7 +239,7 @@ class LightBot extends Skeleton
      */
     public function deleteSelf($message_id)
     {
-        return $this->deleteOut($this->getChatId, $message_id);
+        return $this->deleteOut($this->getUserId, $message_id);
     }
 
     /**
@@ -277,7 +276,7 @@ class LightBot extends Skeleton
      */
     public function editSelf($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
     {
-        return $this->editOut($this->getChatId, $message_id, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
+        return $this->editOut($this->getUserId, $message_id, $message, $keyboard, $layout, $type_keyboard, $parse_mode);
     }
 
     /**
@@ -293,7 +292,7 @@ class LightBot extends Skeleton
      */
     public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
     {
-        return $this->editOut($this->getChatId, $message_id, $message, Services::inlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
+        return $this->editOut($this->getUserId, $message_id, $message, Services::inlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
     }
 
     /**
@@ -322,7 +321,7 @@ class LightBot extends Skeleton
      */
     public function editReplyMarkupSelf($message_id, $keyboard = null, $layout = 2)
     {
-        return $this->editReplyMarkupOut($this->getChatId, $message_id, $keyboard, $layout);
+        return $this->editReplyMarkupOut($this->getUserId, $message_id, $keyboard, $layout);
     }
 
     /**
@@ -348,7 +347,6 @@ class LightBot extends Skeleton
 
         // Получаем текст сообщения и данные callback
         $messageText = $this->getMessageText;
-        $cb = $this->getCallbackData;
 
         // Проверка для текста сообщения
         foreach ($commands as $cmd) {
@@ -356,17 +354,6 @@ class LightBot extends Skeleton
                 $arguments = Services::getArguments($messageText);
                 $callback($arguments); // Завершаем выполнение после нахождения совпадения
                 return;
-            }
-        }
-
-        // Проверка для callback данных
-        if ($cb && is_object($cb)) {
-            foreach ($commands as $cmd) {
-                if (strpos($cb->callback_data, $cmd) === 0) { // сравниваем с callback_data
-                    $arguments = Services::getArguments($cb->callback_data);
-                    $callback($arguments); // Завершаем выполнение после нахождения совпадения
-                    return;
-                }
             }
         }
 
@@ -420,10 +407,34 @@ class LightBot extends Skeleton
     public function anyMessage($callback)
     {
         $text = $this->getMessageText;
-        $callbackData = $this->getCallbackData;
+        $callbackData = $this->getCallback;
         if (mb_substr($text, 0, 1) !== "/" && !$callbackData) {
             return $callback($text);
         }
+    }
+
+    /**
+     * Обрабатывает callback-запросы.
+     *
+     * @param string $pattern Шаблон для сопоставления с данными callback-запроса.
+     * @param Closure $callback Функция, которая будет вызвана при совпадении шаблона.
+     * @param string|null $text Текст сообщения, который будет отправлен в ответ на callback-запрос (по умолчанию null).
+     * @param bool $show_alert Флаг, указывающий, нужно ли показывать alert при ответе на callback-запрос (по умолчанию false).
+     * @param string|null $url URL, который будет открыт при ответе на callback-запрос (по умолчанию null).
+     * @param int $cache_time Время кэширования ответа на callback-запрос в секундах (по умолчанию 0).
+     */
+    public function callback($pattern, $callback, $text = null, $show_alert = false, $url = null, $cache_time = 0)
+    {
+        $callbackQuery = $this->getCallback;
+
+        // Добавляем проверку на существование и тип переменной $cb
+        if ($callbackQuery) {
+            return Services::pattern($pattern, $callbackQuery->getData(), $callback, function () use ($callbackQuery, $text, $show_alert, $url, $cache_time) {
+                $this->answerCallbackQuery($callbackQuery->getId(), $text, $show_alert, $url, $cache_time);
+            });
+        }
+
+        return null;
     }
 
     // /**
@@ -456,49 +467,6 @@ class LightBot extends Skeleton
     // {
     //     $data = (object) $this->getPreCheckoutData();
     //     return $this->answerPreCheckoutQuery(isset($data->id) ? $data->id : null, $ok, $error_message);
-    // }
-
-    // /**
-    //  * Определяет callback для бота и выполняет соответствующий обработчик, если команда совпадает с текстом сообщения.
-    //  *
-    //  * @param string|array $pattern  Это строка или массив строк, по которым будет искать какой callback выполнить, например hello{id} или greet{name}.
-    //  * @param Closure $callback Функция-обработчик для выполнения, если команда совпадает с паттерном.
-    //  * 
-    //  * @return mixed Результат выполнения функции-обработчика.
-    //  */
-    // public function callback($pattern, $callback)
-    // {
-    //     $cb = $this->getCallbackData();
-
-    //     // Добавляем проверку на существование и тип переменной $cb
-    //     if ($cb && is_object($cb)) {
-    //         return $this->pattern($pattern, $cb->callback_data, $callback, function () use ($cb) {
-    //             $this->answerCallbackQuery($cb->callback_query_id);
-    //         });
-    //     }
-
-    //     return null;
-    // }
-
-    // /**
-    //  * Метод для блокировки медиа
-    //  *
-    //  * @param callback $callback
-    //  * 
-    //  */
-    // public function ignoreMedia($callback)
-    // {
-    //     if ($this->getMessageText) {
-    //         if (
-    //             method_exists($this, 'getMedia') &&
-    //             in_array(true, array_map(function ($value) {
-    //                 return !is_null($value);
-    //             }, (array) $this->getMedia()), true)
-    //         ) {
-    //             $callback();
-    //             exit;
-    //         }
-    //     }
     // }
 
     // /**
