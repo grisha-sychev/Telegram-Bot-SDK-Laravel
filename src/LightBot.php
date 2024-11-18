@@ -16,7 +16,6 @@ class LightBot extends Skeleton
     public $getCallback;
     public $getCallbackData;
     public $getMessageId;
-    public $getMessageFromId;
     public $getMessageText;
     public $getUserId;
 
@@ -26,10 +25,8 @@ class LightBot extends Skeleton
         $this->getMessage = $this->getMessage();
 
         $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
-
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
-        $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : null;
-        $this->getMessageFromId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : null;
+        $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
     }
 
     /**
@@ -216,7 +213,7 @@ class LightBot extends Skeleton
      */
     public function sendOutInline($id, $message, $keyboard = null, $layout = 2)
     {
-        return $this->sendOut($id, $message, Services::mapInlineKeyboard($keyboard), $layout, 1);
+        return $this->sendOut($id, $message, $keyboard, $layout, 1);
     }
 
     /**
@@ -254,13 +251,13 @@ class LightBot extends Skeleton
      * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      * 
      */
-    public function editOut($chat_id, $message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    public function editOut($chat_id, $message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
         $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
-        return $this->editMessageText($chat_id, $message_id, $message, null, null, $parse_mode, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+        return $this->editMessageText($chat_id, $message_id, $message, $keyboard ? Services::$type($keygrid) : $keyboard, "HTML");
     }
 
     /**
@@ -286,13 +283,11 @@ class LightBot extends Skeleton
      * @param string $message_id id сообщения
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int $layout Число делений или массив с ручным расположением.
-     * @param int $type_keyboard Тип каливатуры 1 - keyboard 2 - inlineKeyboard
-     * @param string|null $parse_mode Включение HTML мода, по умолчанию включен (необязательно).
      * 
      */
-    public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0, $parse_mode = "HTML")
+    public function editSelfInline($message_id, $message, $keyboard = null, $layout = 2)
     {
-        return $this->editOut($this->getUserId, $message_id, $message, Services::inlineKeyboard($keyboard), $layout, $type_keyboard, $parse_mode);
+        return $this->editOut($this->getUserId, $message_id, $message, $keyboard, $layout, 1, "HTML");
     }
 
     /**

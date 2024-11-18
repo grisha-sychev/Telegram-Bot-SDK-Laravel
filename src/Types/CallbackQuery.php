@@ -17,7 +17,7 @@ class CallbackQuery implements \Teg\Types\Interface\InitObject
         $request = (object) $request;
         $this->id = isset($request->id) ? $request->id : null;
         $this->from = isset($request->from) ? new User($request->from) : null;
-        $this->message = isset($request->message) ? new MaybeInaccessibleMessage($request->message) : null;
+        $this->message = isset($request->message) ? new Message($request->message) : null;
         $this->inline_message_id = isset($request->inline_message_id) ? $request->inline_message_id : null;
         $this->chat_instance = isset($request->chat_instance) ? $request->chat_instance : null;
         $this->data = isset($request->data) ? $request->data : null;
@@ -34,7 +34,7 @@ class CallbackQuery implements \Teg\Types\Interface\InitObject
         return $this->from;
     }
 
-    public function getMessage(): ?MaybeInaccessibleMessage
+    public function getMessage(): ?Message
     {
         return $this->message;
     }
