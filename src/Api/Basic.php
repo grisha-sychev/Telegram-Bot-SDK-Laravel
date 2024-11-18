@@ -1921,7 +1921,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от сервера.
      */
-    public function editMessageReplyMarkup($business_connection_id = null, $chat_id = null, $message_id = null, $inline_message_id = null, $reply_markup = null)
+    public function editMessageReplyMarkup($chat_id = null, $message_id = null, $reply_markup = null, $inline_message_id = null, $business_connection_id = null,)
     {
         return $this->method('editMessageReplyMarkup', [
             "business_connection_id" => $business_connection_id,

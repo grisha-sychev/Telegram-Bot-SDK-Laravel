@@ -303,7 +303,7 @@ class LightBot extends Skeleton
     {
         $keyboard = Services::simpleKeyboard($keyboard);
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
-        return $this->editMessageReplyMarkup(null, $chat_id, $message_id, $keyboard ? Services::inlineKeyboard($keygrid) : $keyboard);
+        return $this->editMessageReplyMarkup($chat_id, $message_id, $keyboard ? Services::inlineKeyboard($keygrid) : $keyboard);
     }
 
     /**

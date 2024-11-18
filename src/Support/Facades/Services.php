@@ -276,4 +276,26 @@ class Services
         }
         return true; // Совпадений не найдено
     }
+
+
+    /**
+     * Приводит заданное количество к сбалансированному состоянию.
+     *
+     * @param array $count Количество элементов массива для уравновешивания.
+     * @param int $row Ряды
+     * @return mixed Результат процесса уравновешивания.
+     */
+    public static function equalizer($count, $row = 2)
+    {
+        $count = count($count);
+
+        if ($count % $row == 0) {
+            $layout = array_fill(0, $count / $row, $row);
+        } else {
+            $layout = array_fill(0, ($count - 1) / $row, $row);
+            $layout[] = 1;
+        }
+
+        return $layout;
+    }
 }
