@@ -27,24 +27,24 @@ php artisan teg:new
 Все боты находяться в пути `app/Bots`, пример `MainBot`:
 
 ```php
-          <?php
-          
-          namespace App\Bots;
-          
-          class MainBot extends AdstractBot
-          {
-              public function main(): void
-              {
-                  $this->command("start", function () {
-                      $this->start();
-                  });
-              }
-          
-              private function start()
-              {
-                  $this->sendSelf('Hello Word');
-              }
-          }
+<?php
+
+namespace App\Bots;
+
+class MainBot extends AdstractBot
+{
+    public function main(): void
+    {
+        $this->command("start", function () {
+            $this->start();
+        });
+    }
+
+    private function start()
+    {
+        $this->sendSelf('Hello Word');
+    }
+}
 ```
 
 ## Проверка бота
