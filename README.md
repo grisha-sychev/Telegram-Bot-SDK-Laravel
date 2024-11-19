@@ -4,9 +4,7 @@
 ![MySQL](https://img.shields.io/badge/mysql-4479A1.svg?style=for-the-badge&logo=mysql&logoColor=white) 
 ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
 
-![Packagist Version](https://img.shields.io/packagist/v/teg/teg)
-![GitHub License](https://img.shields.io/github/license/grisha-sychev/teg)
-![GitHub Repo stars](https://img.shields.io/github/stars/grisha-sychev/teg)
+![Packagist Version](https://img.shields.io/packagist/v/tegbot/tegbot)
 
 Представляет собой готовый набор инструментов для Laravel, который значительно упрощает процесс создания ботов для Telegram.
 
