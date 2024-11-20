@@ -37,8 +37,9 @@ class MessagesCache implements Messages
      */
     public function clue($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
-        $cb = $this->bot->getCallbackData();
+        $messageText = $this->bot->getMessageText;
+        
+        $cb = $this->bot->getCallback;
 
         // Проверяем, что это не callback и сообщение не пусто
         if (!empty($cb) && empty($messageText)) {
@@ -46,7 +47,7 @@ class MessagesCache implements Messages
         }
 
         $patterns = is_array($pattern) ? $pattern : [$pattern];
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
 
         if ($message && $message['clue']) {
             foreach ($patterns as $singlePattern) {
@@ -82,8 +83,9 @@ class MessagesCache implements Messages
      */
     public function payload($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
-        $cb = $this->bot->getCallbackData();
+        $messageText = $this->bot->getMessageText;
+
+        $cb = $this->bot->getCallback;
 
         // Проверяем, что это не callback и сообщение не пусто
         if (!empty($cb) && empty($messageText)) {
@@ -91,7 +93,7 @@ class MessagesCache implements Messages
         }
 
         $patterns = is_array($pattern) ? $pattern : [$pattern];
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
 
         if ($message && $message['payload']) {
             foreach ($patterns as $singlePattern) {
@@ -120,24 +122,24 @@ class MessagesCache implements Messages
 
     public function delete(): void
     {
-        Cache::forget('message_' . $this->bot->getUserId());
+        Cache::forget('message_' . $this->bot->getUserId);
     }
 
     public function deleteClue(): void
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
         if ($message) {
             unset($message['clue']);
-            Cache::put('message_' . $this->bot->getUserId(), $message);
+            Cache::put('message_' . $this->bot->getUserId, $message);
         }
     }
 
     public function deletePayload(): void
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
         if ($message) {
             unset($message['payload']);
-            Cache::put('message_' . $this->bot->getUserId(), $message);
+            Cache::put('message_' . $this->bot->getUserId, $message);
         }
     }
 
@@ -148,7 +150,7 @@ class MessagesCache implements Messages
      */
     public function getMessage()
     {
-        return Cache::get('message_' . $this->bot->getUserId());
+        return Cache::get('message_' . $this->bot->getUserId);
     }
 
     /**
@@ -160,11 +162,11 @@ class MessagesCache implements Messages
      */
     public function setMessage($clue, $payload = null): void
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
 
         if (!$message) {
             $message = [
-                'tg_id' => $this->bot->getUserId(),
+                'tg_id' => $this->bot->getUserId,
                 'clue' => $clue,
                 'payload' => $payload
             ];
@@ -173,7 +175,7 @@ class MessagesCache implements Messages
             $message['payload'] = $payload;
         }
 
-        Cache::put('message_' . $this->bot->getUserId(), $message);
+        Cache::put('message_' . $this->bot->getUserId, $message);
     }
 
     /**
@@ -183,7 +185,7 @@ class MessagesCache implements Messages
      */
     public function getPayload()
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
         return $message ? $message['payload'] : null;
     }
 
@@ -195,11 +197,11 @@ class MessagesCache implements Messages
      */
     public function setPayload($payload): void
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
 
         if ($message) {
             $message['payload'] = $payload;
-            Cache::put('message_' . $this->bot->getUserId(), $message);
+            Cache::put('message_' . $this->bot->getUserId, $message);
         }
     }
 
@@ -210,7 +212,7 @@ class MessagesCache implements Messages
      */
     public function getClue(): ?string
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
         return $message ? $message['clue'] : null;
     }
 
@@ -222,11 +224,11 @@ class MessagesCache implements Messages
      */
     public function setClue(string $clue): void
     {
-        $message = Cache::get('message_' . $this->bot->getUserId());
+        $message = Cache::get('message_' . $this->bot->getUserId);
 
         if ($message) {
             $message['clue'] = $clue;
-            Cache::put('message_' . $this->bot->getUserId(), $message);
+            Cache::put('message_' . $this->bot->getUserId, $message);
         }
     }
 }

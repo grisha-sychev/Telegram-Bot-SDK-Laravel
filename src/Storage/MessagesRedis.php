@@ -37,8 +37,9 @@ class MessagesRedis implements Messages
      */
     public function clue($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
-        $cb = $this->bot->getCallbackData();
+        $messageText = $this->bot->getMessageText;
+        
+        $cb = $this->bot->getCallback;
 
         // Проверяем, что это не callback и сообщение не пусто
         if (!empty($cb) && empty($messageText)) {
@@ -82,9 +83,10 @@ class MessagesRedis implements Messages
      */
     public function payload($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
-        $cb = $this->bot->getCallbackData();
+        $messageText = $this->bot->getMessageText;
 
+        $cb = $this->bot->getCallback;
+        
         // Проверяем, что это не callback и сообщение не пусто
         if (!empty($cb) && empty($messageText)) {
             return null;
@@ -121,19 +123,19 @@ class MessagesRedis implements Messages
 
     public function delete(): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::del("message:{$userId}");
     }
 
     public function deleteClue(): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::hdel("message:{$userId}", 'clue');
     }
 
     public function deletePayload(): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::hdel("message:{$userId}", 'payload');
     }
 
@@ -144,7 +146,7 @@ class MessagesRedis implements Messages
      */
     public function getMessage()
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         return Redis::hgetall("message:{$userId}");
     }
 
@@ -157,7 +159,7 @@ class MessagesRedis implements Messages
      */
     public function setMessage($clue, $payload = null): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::hmset("message:{$userId}", [
             'clue' => $clue,
             'payload' => $payload
@@ -183,7 +185,7 @@ class MessagesRedis implements Messages
      */
     public function setPayload($payload): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::hset("message:{$userId}", 'payload', $payload);
     }
 
@@ -206,7 +208,7 @@ class MessagesRedis implements Messages
      */
     public function setClue(string $clue): void
     {
-        $userId = $this->bot->getUserId();
+        $userId = $this->bot->getUserId;
         Redis::hset("message:{$userId}", 'clue', $clue);
     }
 }

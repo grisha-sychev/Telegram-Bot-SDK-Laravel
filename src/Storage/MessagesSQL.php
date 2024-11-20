@@ -37,10 +37,9 @@ class MessagesSQL implements Messages
      */
     public function clue($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
+        $messageText = $this->bot->getMessageText;
 
-
-        $cb = $this->bot->getCallbackData();
+        $cb = $this->bot->getCallback;
 
         // Проверяем, что это не callback или сообщение не пусто
         if ($cb || empty($messageText)) {
@@ -48,7 +47,7 @@ class MessagesSQL implements Messages
         }
 
         $patterns = is_array($pattern) ? $pattern : [$pattern];
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if ($message && $message->clue) {
             foreach ($patterns as $singlePattern) {
@@ -84,10 +83,9 @@ class MessagesSQL implements Messages
      */
     public function payload($pattern, $callback): mixed
     {
-        $messageText = $this->bot->getMessageText();
+        $messageText = $this->bot->getMessageText;
 
-
-        $cb = $this->bot->getCallbackData();
+        $cb = $this->bot->getCallback;
 
         // Проверяем, что это не callback или сообщение не пусто
         if ($cb || empty($messageText)) {
@@ -95,7 +93,7 @@ class MessagesSQL implements Messages
         }
 
         $patterns = is_array($pattern) ? $pattern : [$pattern];
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if ($message && $message->payload) {
             foreach ($patterns as $singlePattern) {
@@ -129,7 +127,7 @@ class MessagesSQL implements Messages
      */
     public function delete(): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if ($message) {
             $message->payload = '';
@@ -145,7 +143,7 @@ class MessagesSQL implements Messages
      */
     public function deletePayload(): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
         $message->payload = '';
         $message->save();
     }
@@ -157,7 +155,7 @@ class MessagesSQL implements Messages
      */
     public function deleteClue(): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
         $message->clue = '';
         $message->save();
     }
@@ -171,10 +169,10 @@ class MessagesSQL implements Messages
     public function getMessage($input = null)
     {
         if ($input !== null) {
-            return Message::where('tg_id', $this->bot->getUserId())->where('clue', $input)->exists();
+            return Message::where('tg_id', $this->bot->getUserId)->where('clue', $input)->exists();
         }
 
-        return Message::where('tg_id', $this->bot->getUserId())->first();
+        return Message::where('tg_id', $this->bot->getUserId)->first();
     }
 
     /**
@@ -186,11 +184,11 @@ class MessagesSQL implements Messages
      */
     public function setMessage($clue, $payload = null): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if (! $message) {
             $message = new Message;
-            $message->tg_id = $this->bot->getUserId();
+            $message->tg_id = $this->bot->getUserId;
             $message->clue = $clue;
             $message->payload = $payload;
             $message->save();
@@ -208,7 +206,7 @@ class MessagesSQL implements Messages
      */
     public function getPayload()
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
         return $message ? $message->payload : null;
     }
 
@@ -220,7 +218,7 @@ class MessagesSQL implements Messages
      */
     public function setPayload($payload): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if ($message) {
             $message->payload = $payload;
@@ -235,7 +233,7 @@ class MessagesSQL implements Messages
      */
     public function getClue(): ?string
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
         return $message ? $message->clue : null;
     }
 
@@ -247,7 +245,7 @@ class MessagesSQL implements Messages
      */
     public function setClue(string $clue): void
     {
-        $message = Message::where('tg_id', $this->bot->getUserId())->first();
+        $message = Message::where('tg_id', $this->bot->getUserId)->first();
 
         if ($message) {
             $message->clue = $clue;

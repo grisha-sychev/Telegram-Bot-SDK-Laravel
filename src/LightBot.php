@@ -14,7 +14,6 @@ class LightBot extends Skeleton
     public $getPhoto;
     public $getPhotoId;
     public $getCallback;
-    public $getCallbackData;
     public $getMessageId;
     public $getMessageText;
     public $getUserId;
