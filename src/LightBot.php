@@ -3,14 +3,9 @@
 namespace Teg;
 
 use Closure;
+use Illuminate\Support\Facades\File;
 use Teg\Api\Skeleton;
 use Teg\Support\Facades\Services;
-
-/**
- * @method void userModule()
- * @method void stateModule()
- * @method void transliteModule()
- */
 
 class LightBot extends Skeleton
 {
@@ -32,18 +27,6 @@ class LightBot extends Skeleton
         $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
-
-        if (method_exists($this, 'userModule')) {
-            $this->userModule();
-        }
-
-        if (method_exists($this, 'stateModule')) {
-            $this->stateModule();
-        }
-
-        if (method_exists($this, 'transliteModule')) {
-            $this->transliteModule();
-        }
     }
 
     /**
@@ -56,24 +39,60 @@ class LightBot extends Skeleton
      */
     public function run()
     {
-        $calledClass = get_called_class();
-        $namespaceParts = explode('\\', $calledClass);
-        $className = $namespaceParts[count($namespaceParts) - 1];
-        $this->bot = strtolower(str_replace('Bot', '', $className));
+        $this->bot = $this->classNameBot();
+        $this->modules();
+
         return $this;
     }
 
+    /**
+     * Преобразует имя бота в имя класса.
+     *
+     * @return string
+     */
+    protected function classNameBot(): string
+    {
+        return strtolower(str_replace('Bot', '', class_basename(static::class)));
+    }
 
     /**
-     * Отправляет отладочную информацию о текущем запросе в формате JSON.
+     * Запускает все модули.
      *
      * @return void
      */
-    public function debug($data = null)
+    public function modules()
+    {
+        collect($this->getModules())
+            ->filter(fn($module) => method_exists($this, $module))
+            ->each(fn($module) => $this->$module());
+    }
+
+    /**
+     * Получает имена модулей из папки Modules в формате методов.
+     *
+     * @return array
+     */
+    protected function getModules(): array
+    {
+        $modulePath = dirname(__DIR__) . '/src/Modules';
+
+        $files = File::files($modulePath);
+
+        return collect($files)
+            ->map(fn($file) => class_basename($file->getFilenameWithoutExtension()))
+            ->map(fn($className) => lcfirst($className))
+            ->toArray();
+    }
+
+    /**
+     * Отправляет отладочную информацию о текущем запросе в формате JSON.
+     */
+    public function debug($data = null, $tg_id = null)
     {
         $data = $data ?? $this->request();
+        $tg_id = $tg_id ?? $this->getUserId;
 
-        $this->sendSelf("<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
+        $this->sendOut($tg_id, "<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
         exit;
     }
 
