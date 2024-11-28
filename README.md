@@ -47,8 +47,13 @@ php artisan teg:new
 
 namespace App\Bots;
 
+use Teg\Modules\UserModule;
+use Teg\Modules\StateModule;
+
 class MainBot extends AdstractBot
 {
+    use StateModule, UserModule; // optional
+
     public function main(): void
     {
         $this->command("start", function () {
