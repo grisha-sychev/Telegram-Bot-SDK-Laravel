@@ -52,7 +52,7 @@ use Teg\Modules\StateModule;
 
 class MainBot extends AdstractBot
 {
-    use UserModule; // optional
+    use StateModule, UserModule; // optional
 
     public function main(): void
     {
