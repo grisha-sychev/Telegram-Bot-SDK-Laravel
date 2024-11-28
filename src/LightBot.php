@@ -6,6 +6,12 @@ use Closure;
 use Teg\Api\Skeleton;
 use Teg\Support\Facades\Services;
 
+/**
+ * @method void userModule()
+ * @method void stateModule()
+ * @method void transliteModule()
+ */
+
 class LightBot extends Skeleton
 {
     public $getMessage;
@@ -26,6 +32,18 @@ class LightBot extends Skeleton
         $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
+
+        if (method_exists($this, 'userModule')) {
+            $this->userModule();
+        }
+
+        if (method_exists($this, 'stateModule')) {
+            $this->stateModule();
+        }
+
+        if (method_exists($this, 'transliteModule')) {
+            $this->transliteModule();
+        }
     }
 
     /**

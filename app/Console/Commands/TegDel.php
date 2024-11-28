@@ -19,14 +19,14 @@ class TegDel extends Command
    *
    * @var string
    */
-  protected $description = 'Deleting bot Telegram';
+  protected $description = 'Deleting your bot Telegram';
 
   /**
    * Execute the console command.
    */
   public function handle()
   {
-    $name = $this->argument('name') ?? $this->ask('Имя бота в системе');
+    $name = $this->argument('name') ?? $this->ask('Please give the name of the bot.');
 
     $configPath = config_path('tegbot.php');
     $config = include $configPath;

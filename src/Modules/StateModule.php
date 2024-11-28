@@ -10,15 +10,13 @@ use Teg\Modules\Enum\Connect;
  * Модуль управления состоянием сообщений в боте
  */
 
-trait State
+trait StateModule
 {
     private $state;
     public Connect $typeConnect;
 
-    public function __construct()
+    public function stateModule()
     {
-        parent::__construct();
-        
         $this->typeConnect = Connect::Sql;
 
         switch ($this->typeConnect) {

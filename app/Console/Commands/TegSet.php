@@ -6,30 +6,30 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Teg\LightBot;
 
-class TegNew extends Command
+class TegSet extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'teg:new {name?} {token?} {hostname?}';
+    protected $signature = 'teg:set {name?} {token?} {hostname?}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Creating bot Telegram';
+    protected $description = 'Setting and creating your bot Telegram';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $name = $this->argument('name') ?? $this->ask('Как вы назовете телеграм бота?');
-        $token = $this->argument('token') ?? $this->ask('Токен телеграм бота');
-        $hostname = $this->argument('hostname') ?? $this->ask('Наименование хоста (exemple.com)');
+        $name = $this->argument('name') ?? $this->ask('How are we going to call it? Please choose a name for your bot.');
+        $token = $this->argument('token') ?? $this->ask('Your bot Telegram token.');
+        $hostname = $this->argument('hostname') ?? $this->ask('Name of the host. (exemple.com)');
 
         $configPath = config_path('tegbot.php');
         $config = include $configPath;
@@ -49,14 +49,7 @@ class TegNew extends Command
 
         if ($client !== null) {
             $array = $client->setWebhook();
-            $description = $array['description'];
-
-            if($description === "Webhook was set") {
-                $this->info(PHP_EOL . $description . PHP_EOL);
-            } else {
-                $this->fail(PHP_EOL . $description . PHP_EOL);
-                return;
-            }
+            $this->info(PHP_EOL . $array['description'] . PHP_EOL);
         }
 
         $botNameCapitalized = ucfirst($name) . "Bot";
@@ -69,9 +62,14 @@ class TegNew extends Command
           <?php
           
           namespace App\Bots;
+
+          use Teg\Modules\UserModule;
+          use Teg\Modules\StateModule;
           
           class {$botNameCapitalized} extends AdstractBot
           {
+              use StateModule, UserModule; // optional 
+
               public function main(): void
               {
                   \$this->command("start", function () {
