@@ -36,7 +36,7 @@ php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 Для создания нового бота используйте команду:
 
 ```bash
-php artisan teg:new
+php artisan teg:set
 ```
 ## Раздел бота
 
