@@ -2,18 +2,33 @@
 
 namespace Teg\Api;
 
-use Teg\Types\CallbackQuery;
-use Teg\Types\Message;
-
 class Skeleton extends Basic
 {
     public function getMessage()
     {
-        return isset($this->request()->message) ? new Message($this->request()->message) : null;
+        if ($this->request()->getMessage()) {
+            return $this->request()->getMessage();
+        }
+
+        return;
     }
 
     public function getCallbackQuery()
     {
-        return isset($this->request()->callback_query) ? new CallbackQuery($this->request()->callback_query) : null;
+        if ($this->request()->getCallbackQuery()) {
+            return $this->request()->getCallbackQuery();
+        }
+        
+        return;
+    }
+
+    public function getChannelPost()
+    {
+
+        if ($this->request()->getChannelPost()) {
+            return $this->request()->getChannelPost();
+        }
+        
+        return;
     }
 }

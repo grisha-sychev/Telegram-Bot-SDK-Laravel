@@ -4,6 +4,7 @@ namespace Teg\Api;
 
 use Teg\Support\Facades\Services;
 use Illuminate\Support\Facades\Http;
+use Teg\Types\DynamicData;
 
 class Core
 {
@@ -33,8 +34,8 @@ class Core
         $url = "https://api.telegram.org/bot" . (new Services)->getToken($this->bot) . "/" . $method . ($query ? '?' . http_build_query($query) : '');
         return Http::withoutVerifying()->get($url)->json();
     }
-    
-    
+
+
     /**
      * Получает все данные запроса от Telegram и возвращает их в виде массива.
      *
@@ -42,7 +43,6 @@ class Core
      */
     public function request()
     {
-        return (object) request()->all();
+        return new DynamicData(request()->all());
     }
-
 }

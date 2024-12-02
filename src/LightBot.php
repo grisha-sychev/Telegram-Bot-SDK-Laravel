@@ -92,7 +92,7 @@ class LightBot extends Skeleton
         $data = $data ?? $this->request();
         $tg_id = $tg_id ?? $this->getUserId;
 
-        $this->sendOut($tg_id, "<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
+        $this->sendOut($tg_id, "<pre>" . json_encode(json_decode($data, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
         exit;
     }
 
