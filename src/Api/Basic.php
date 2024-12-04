@@ -69,7 +69,7 @@ class Basic extends Core
      * @param mixed|null $reply_markup Дополнительные параметры интерфейса (необязательно).
      *
      */
-    public function sendMessage($chat_id, $text, $business_connection_id = null, $message_thread_id = null, $parse_mode = null, $entities = null, $link_preview_options = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendMessage($chat_id, $text, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $parse_mode = null, $entities = null, $link_preview_options = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendMessage', [
             "chat_id" => $chat_id,
@@ -210,7 +210,7 @@ class Basic extends Core
      * @param mixed|null $reply_markup Дополнительные параметры интерфейса (необязательно).
      *
      */
-    public function sendPhoto($chat_id, $photo, $caption = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendPhoto($chat_id, $photo, $caption = null, $reply_markup = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendPhoto', [
             "chat_id" => $chat_id,
@@ -250,7 +250,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendAudio($chat_id, $audio, $business_connection_id = null, $message_thread_id = null, $caption = null, $parse_mode = null, $caption_entities = null, $duration = null, $performer = null, $title = null, $thumbnail = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendAudio($chat_id, $audio, $caption = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $parse_mode = null, $caption_entities = null, $duration = null, $performer = null, $title = null, $thumbnail = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendAudio', [
             "chat_id" => $chat_id,
@@ -292,7 +292,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendDocument($chat_id, $document, $business_connection_id = null, $message_thread_id = null, $thumbnail = null, $caption = null, $parse_mode = null, $caption_entities = null, $disable_content_type_detection = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendDocument($chat_id, $document, $caption = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $thumbnail = null, $parse_mode = null, $caption_entities = null, $disable_content_type_detection = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendDocument', [
             "chat_id" => $chat_id,
@@ -337,7 +337,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendVideo($chat_id, $video, $business_connection_id = null, $message_thread_id = null, $duration = null, $width = null, $height = null, $thumbnail = null, $caption = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $supports_streaming = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendVideo($chat_id, $video, $caption = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $duration = null, $width = null, $height = null, $thumbnail = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $supports_streaming = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendVideo', [
             "chat_id" => $chat_id,
@@ -386,7 +386,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendAnimation($chat_id, $animation, $business_connection_id = null, $message_thread_id = null, $duration = null, $width = null, $height = null, $thumbnail = null, $caption = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendAnimation($chat_id, $animation, $caption = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $duration = null, $width = null, $height = null, $thumbnail = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $has_spoiler = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendAnimation', [
             "chat_id" => $chat_id,
@@ -429,7 +429,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API после отправки голосового сообщения.
      */
-    public function sendVoice($chat_id, $voice, $business_connection_id = null, $message_thread_id = null, $caption = null, $parse_mode = null, $caption_entities = null, $duration = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendVoice($chat_id, $voice, $caption = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $parse_mode = null, $caption_entities = null, $duration = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendVoice', [
             "chat_id" => $chat_id,
@@ -467,7 +467,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API после отправки видеозаметки.
      */
-    public function sendVideoNote($chat_id, $video_note, $business_connection_id = null, $message_thread_id = null, $duration = null, $length = null, $thumbnail = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendVideoNote($chat_id, $video_note, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $duration = null, $length = null, $thumbnail = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendVideoNote', [
             "chat_id" => $chat_id,
@@ -503,7 +503,7 @@ class Basic extends Core
      * @param array|null $reply_markup Разметка ответа (необязательно).
      * @return mixed Ответ от сервера.
      */
-    public function sendPaidMedia($chat_id, $star_count, array $media, $business_connection_id = null, $payload = null, $caption = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $disable_notification = false, $protect_content = false, $reply_parameters = null, $reply_markup = null)
+    public function sendPaidMedia($chat_id, $star_count, array $media, $caption = null, $reply_markup = null,$business_connection_id = null, $payload = null, $parse_mode = null, $caption_entities = null, $show_caption_above_media = null, $disable_notification = false, $protect_content = false, $reply_parameters = null)
     {
         return $this->method('sendPaidMedia', [
             "chat_id" => $chat_id,
@@ -537,7 +537,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API после отправки группы медиа-сообщений.
      */
-    public function sendMediaGroup($chat_id, array $media, $business_connection_id = null, $message_thread_id = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendMediaGroup($chat_id, array $media, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendMediaGroup', [
             "chat_id" => $chat_id,
@@ -572,7 +572,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendLocation($chat_id, $latitude, $longitude, $business_connection_id = null, $message_thread_id = null, $horizontal_accuracy = null, $live_period = null, $heading = null, $proximity_alert_radius = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendLocation($chat_id, $latitude, $longitude, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $horizontal_accuracy = null, $live_period = null, $heading = null, $proximity_alert_radius = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendLocation', [
             "chat_id" => $chat_id,
@@ -614,7 +614,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendVenue($chat_id, $latitude, $longitude, $title, $address, $business_connection_id = null, $message_thread_id = null, $foursquare_id = null, $foursquare_type = null, $google_place_id = null, $google_place_type = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null)
+    public function sendVenue($chat_id, $latitude, $longitude, $title, $address, $reply_markup = null, $business_connection_id = null, $message_thread_id = null, $foursquare_id = null, $foursquare_type = null, $google_place_id = null, $google_place_type = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null)
     {
         return $this->method('sendVenue', [
             "chat_id" => $chat_id,
@@ -654,7 +654,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API.
      */
-    public function sendContact($chat_id, $phone_number, $first_name, $last_name = null, $vcard = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null)
+    public function sendContact($chat_id, $phone_number, $first_name, $reply_markup = null, $last_name = null, $vcard = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $business_connection_id = null, $message_thread_id = null)
     {
         return $this->method('sendContact', [
             "chat_id" => $chat_id,
@@ -743,7 +743,7 @@ class Basic extends Core
      *
      * @return mixed Ответ от API после отправки сообщения.
      */
-    public function sendDice($chat_id, $emoji = '🎲', $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $reply_markup = null, $business_connection_id = null, $message_thread_id = null)
+    public function sendDice($chat_id, $emoji = '🎲', $reply_markup = null, $disable_notification = false, $protect_content = false, $message_effect_id = null, $reply_parameters = null, $business_connection_id = null, $message_thread_id = null)
     {
         return $this->method('sendDice', [
             "chat_id" => $chat_id,

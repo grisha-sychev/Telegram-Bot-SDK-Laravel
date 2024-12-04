@@ -90,9 +90,11 @@ class LightBot extends Skeleton
     public function debug($data = null, $tg_id = null)
     {
         $data = $data ?? $this->request();
+
+        $data = is_string($data) ?$data : json_decode($data, true);
         $tg_id = $tg_id ?? $this->getUserId;
 
-        $this->sendOut($tg_id, "<pre>" . json_encode(json_decode($data, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
+        $this->sendOut($tg_id, "<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
         exit;
     }
 
@@ -112,7 +114,7 @@ class LightBot extends Skeleton
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
-        return $this->sendMessage($id, $message, null, null, "HTML", null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
+        return $this->sendMessage($id, $message, $keyboard ? Services::$type($keygrid) : $keyboard, null, null, "HTML", null, null, false, false, null, null);
     }
 
     /**

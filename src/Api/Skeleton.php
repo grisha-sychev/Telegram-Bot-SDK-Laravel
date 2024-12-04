@@ -4,31 +4,23 @@ namespace Teg\Api;
 
 class Skeleton extends Basic
 {
+    private function getRequest($method)
+    {
+        return $this->request()->{'get' . $method}() ?? null;
+    }
+
     public function getMessage()
     {
-        if ($this->request()->getMessage()) {
-            return $this->request()->getMessage();
-        }
-
-        return;
+        return $this->getRequest('Message');
     }
 
     public function getCallbackQuery()
     {
-        if ($this->request()->getCallbackQuery()) {
-            return $this->request()->getCallbackQuery();
-        }
-        
-        return;
+        return $this->getRequest('CallbackQuery');
     }
 
     public function getChannelPost()
     {
-
-        if ($this->request()->getChannelPost()) {
-            return $this->request()->getChannelPost();
-        }
-        
-        return;
+        return $this->getRequest('ChannelPost');
     }
 }
