@@ -3,7 +3,9 @@
     "description": "Telergam bot SDK package",
     "type": "library",
     "license": "MIT",
-    "require": {},
+    "require": {
+        "stichoza/google-translate-php": "^5.2"
+    },
     "autoload": {
         "psr-4": {
             "Teg\\": "src/"
