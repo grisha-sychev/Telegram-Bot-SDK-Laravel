@@ -10,7 +10,7 @@ trait UserModule
 
     public function userModule()
     {
-        $this->setUserTelegram(false);
+        $this->setUserTelegram();
 
         if ($this->updateUserTelegram) {
             $this->command("start", function () {

@@ -10,6 +10,7 @@ use Teg\Support\Facades\Services;
 class LightBot extends Skeleton
 {
     public $getMessage;
+    public $getFrom;
     public $getVideo;
     public $getVideoId;
     public $getPhoto;
@@ -24,6 +25,7 @@ class LightBot extends Skeleton
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
 
+        $this->getFrom = isset($this->getMessage) ? $this->getMessage->getFrom() : (isset($this->getCallback) ? $this->getCallback->getFrom() : null);
         $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
@@ -91,7 +93,7 @@ class LightBot extends Skeleton
     {
         $data = $data ?? $this->request();
 
-        $data = is_string($data) ?$data : json_decode($data, true);
+        $data = is_string($data) ? $data : json_decode($data, true);
         $tg_id = $tg_id ?? $this->getUserId;
 
         $this->sendOut($tg_id, "<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
@@ -110,6 +112,13 @@ class LightBot extends Skeleton
      */
     public function sendOut($id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
+        $trans = 'trans';
+
+        if(method_exists($this, $trans)) {
+            $message = $this->$trans($message);
+            $keyboard = $this->$trans($keyboard);
+        }
+
         $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;

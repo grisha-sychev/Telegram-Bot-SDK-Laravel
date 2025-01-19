@@ -298,4 +298,35 @@ class Services
 
         return $layout;
     }
+
+    public static function isSSLAvailable()
+    {
+        $scheme = parse_url(self::getCurrentUrl(), PHP_URL_SCHEME);
+        $host = parse_url(self::getCurrentUrl(), PHP_URL_HOST);
+
+        if ($scheme !== 'https') {
+            return false;
+        }
+
+        $stream = @stream_context_create(["ssl" => ["capture_peer_cert" => true]]);
+        $connection = @stream_socket_client(
+            "ssl://$host:443",
+            $errno,
+            $errstr,
+            5,
+            STREAM_CLIENT_CONNECT,
+            $stream
+        );
+
+        return $connection !== false;
+    }
+
+    private static function getCurrentUrl()
+    {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        $uri = $_SERVER['REQUEST_URI'];
+
+        return "$protocol://$host$uri";
+    }
 }
