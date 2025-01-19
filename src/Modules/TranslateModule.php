@@ -32,10 +32,13 @@ trait TranslateModule
     {
         if (is_array($input)) {
             $cacheKey = 'tr_' . md5(json_encode($input) . $this->getMessageText);
-    
+        
             return Cache::rememberForever($cacheKey, function () use ($input) {
                 return array_map(function ($item) {
-                    return is_array($item) ? array_map([$this, 'translate'], $item) : $this->translate($item);
+                    if (is_array($item)) {
+                        $item[1] = $this->translate($item[1]);
+                    }
+                    return $item;
                 }, $input);
             });
         } elseif (is_string($input)) {
