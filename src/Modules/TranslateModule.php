@@ -36,7 +36,12 @@ trait TranslateModule
             return Cache::rememberForever($cacheKey, function () use ($input) {
                 return array_map(function ($item) {
                     if (is_array($item)) {
-                        $item[1] = $this->translate($item[1]);
+                        if(count($item) === 1) {
+                            $item[0] = $this->translate($item[0]);
+                        } 
+                        if(count($item) === 2) {
+                            $item[1] = $this->translate($item[1]);
+                        } 
                     }
                     return $item;
                 }, $input);

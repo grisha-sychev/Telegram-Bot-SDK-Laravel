@@ -168,21 +168,52 @@ class Services
      * ключ 'callback_data'.
      *
      * @param array $options - массив параметров для создания клавиатуры. Каждый 
+     * @param int $type_keyboard - тип клавиватуры
      * параметр - это массив, состоящий из двух элементов: первый элемент 
      */
-    public static function simpleKeyboard(array $options)
+    public static function simpleKeyboard(array $options, int $type_keyboard)
     {
         $result = [];
         foreach ($options as $option) {
-            if (strpos($option[0], 'app:') === 0) {
-                $result[] = ['web_app' => substr($option[0], 4), 'text' => $option[1]];
-            } elseif (strpos($option[0], 'url:') === 0) {
-                $result[] = ['url' => substr($option[0], 4), 'text' => $option[1]];
+            if ($type_keyboard) {
+                if (strpos($option[0], 'app:') === 0) {
+                    $url = substr($option[0], 4);
+                    $url = self::ensureHttps($url);
+                    $result[] = [
+                        'text' => $option[1],
+                        'web_app' => [
+                            'url' => $url
+                        ]
+                    ];
+                } elseif (strpos($option[0], 'url:') === 0) {
+                    $url = substr($option[0], 4);
+                    $url = self::ensureHttps($url);
+                    $result[] = [
+                        'url' => $url,
+                        'text' => $option[1]
+                    ];
+                } else {
+                    $result[] = [
+                        'callback_data' => $option[0],
+                        'text' => $option[1]
+                    ];
+                }
             } else {
-                $result[] = ['callback_data' => $option[0], 'text' => $option[1]];
+                $result[] = [
+                    'text' => $option[0]
+                ];
             }
         }
+
         return $result;
+    }
+
+    private static function ensureHttps(string $url): string
+    {
+        if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) {
+            return $url;
+        }
+        return 'https://' . $url;
     }
 
     /**
@@ -230,7 +261,7 @@ class Services
     {
         // Приводим паттерн к массиву, если это строка
         $patterns = is_array($pattern) ? $pattern : [$pattern];
- 
+
         // Пробегаемся по каждому паттерну
         foreach ($patterns as $singlePattern) {
             // Проверяем, является ли паттерн регулярным выражением

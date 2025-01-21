@@ -19,6 +19,7 @@ class LightBot extends Skeleton
     public $getMessageId;
     public $getMessageText;
     public $getUserId;
+    public $getUsername;
 
     public function __construct()
     {
@@ -27,6 +28,7 @@ class LightBot extends Skeleton
 
         $this->getFrom = isset($this->getMessage) ? $this->getMessage->getFrom() : (isset($this->getCallback) ? $this->getCallback->getFrom() : null);
         $this->getUserId = isset($this->getMessage) ? $this->getMessage->getFrom()->getId() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getId() : null);
+        $this->getUsername = isset($this->getMessage) ? $this->getMessage->getFrom()->getUsername() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getUsername() : null);
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
     }
@@ -87,16 +89,29 @@ class LightBot extends Skeleton
     }
 
     /**
-     * Отправляет отладочную информацию о текущем запросе в формате JSON.
+     * Отправляет отладочную информацию о текущем запросе в формате текста или JSON.
      */
     public function debug($data = null, $tg_id = null)
     {
         $data = $data ?? $this->request();
 
-        $data = is_string($data) ? $data : json_decode($data, true);
-        $tg_id = $tg_id ?? $this->getUserId;
+        if (is_string($data)) {
+            $decodedData = json_decode($data, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $data = $decodedData;
+            }
+        }
 
-        $this->sendOut($tg_id, "<pre>" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>");
+        $jsonData = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        if ($jsonData === false) {
+            $data = print_r($data, true);
+            $jsonData = json_encode(['text' => $data], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        }
+
+        $tg_id = $tg_id ?? $this->getUserId;
+        
+        $this->sendOut($tg_id, "<pre>" . $jsonData . "</pre>");
         exit;
     }
 
@@ -114,12 +129,12 @@ class LightBot extends Skeleton
     {
         $trans = 'trans';
 
-        if(method_exists($this, $trans)) {
+        if (method_exists($this, $trans)) {
             $message = $this->$trans($message);
             $keyboard = $this->$trans($keyboard);
         }
 
-        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard, $type_keyboard) : $keyboard;
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
@@ -153,7 +168,7 @@ class LightBot extends Skeleton
      */
     public function sendOutPhoto($chat_id, $photo, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard, $type_keyboard) : $keyboard;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
         return $this->sendPhoto($chat_id, $photo, $caption, 'HTML', null, null, null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
@@ -201,7 +216,7 @@ class LightBot extends Skeleton
      */
     public function sendOutVideo($chat_id, $video, $caption = null, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard, $type_keyboard) : $keyboard;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
         return $this->sendVideo($chat_id, $video, null, null, null, null, null, null, $caption, 'HTML', null, false, false, null, null, $keyboard ? Services::$type($keygrid) : $keyboard);
@@ -300,7 +315,7 @@ class LightBot extends Skeleton
      */
     public function editOut($chat_id, $message_id, $message, $keyboard = null, $layout = 2, $type_keyboard = 0)
     {
-        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard) : $keyboard;
+        $keyboard = $keyboard !== null ? Services::simpleKeyboard($keyboard, $type_keyboard) : $keyboard;
         is_array($message) ? $message = Services::html($message) : $message;
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         $type_keyboard === 1 ? $type = "inlineKeyboard" : $type = "keyboard";
@@ -348,7 +363,7 @@ class LightBot extends Skeleton
      */
     public function editReplyMarkupOut($chat_id, $message_id, $keyboard, $layout = 2)
     {
-        $keyboard = Services::simpleKeyboard($keyboard);
+        $keyboard = Services::simpleKeyboard($keyboard, 1);
         $keyboard ? $keygrid = Services::grid($keyboard, $layout) : $keyboard;
         return $this->editMessageReplyMarkup($chat_id, $message_id, $keyboard ? Services::inlineKeyboard($keygrid) : $keyboard);
     }
@@ -402,6 +417,35 @@ class LightBot extends Skeleton
         return null;
     }
 
+
+    /**
+     * Аругменты любой команды.
+     * 
+     * @return int|string|null Результат выполнения функции-обработчика.
+     */
+    public function commandArguments()
+    {
+        $this->anyCommand(function ($command) {
+            return self::getArgument($this->getMessageText, $command);
+        });
+    }
+
+    /**
+     * Извлекает последнее слово из заданной строки, исключая определенную команду.
+     *
+     * @param string $str Входная строка.
+     * @param string $command Команда, которую нужно исключить из входной строки.
+     * @return string Последнее слово из входной строки или пустая строка, если входная строка совпадает с командой.
+     */
+    private static function getArgument(string $str, string $command): string
+    {
+        if ($str === $command) {
+            return '';
+        }
+        preg_match('/(\S+)\s(.+)/', $str, $matches);
+        return isset($matches[2]) ? $matches[2] : "";
+    }
+
     /**
      * Определяет сообщение для бота и выполняет соответствующий обработчик, если сообщение совпадает с паттерном.
      *
@@ -452,6 +496,22 @@ class LightBot extends Skeleton
         $callbackData = $this->getCallback;
         if (mb_substr($text, 0, 1) !== "/" && !$callbackData) {
             return $callback($text);
+        }
+    }
+
+    /**
+     * Определяет действие для бота и выполняет соответствующий обработчик, если текст сообщения начинается с "/".
+     *
+     * @param Closure $callback Функция-обработчик для выполнения, если текст сообщения не является командой.
+     *
+     * @return mixed Результат выполнения функции-обработчика.
+     */
+    public function anyCommand($callback)
+    {
+        $command = $this->getMessageText;
+        $callbackData = $this->getCallback;
+        if (mb_substr($command, 0, 1) === "/" && !$callbackData) {
+            return $callback($command);
         }
     }
 
