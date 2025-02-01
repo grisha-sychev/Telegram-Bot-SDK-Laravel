@@ -82,6 +82,14 @@ class DynamicData
 
         return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $string));
     }
+
+    /**
+     * Метод для преобразования объекта в JSON.
+     *
+     * @return string
+     */
+    public function toJson(): string
+    {
+        return json_encode($this->data, JSON_UNESCAPED_UNICODE);
+    }
 }
-
-

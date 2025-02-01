@@ -21,6 +21,8 @@ class LightBot extends Skeleton
     public $getUserId;
     public $getUsername;
 
+    public array $commandsList;
+
     public function __construct()
     {
         $this->getCallback = $this->getCallbackQuery();
@@ -88,12 +90,27 @@ class LightBot extends Skeleton
             ->toArray();
     }
 
+    public function getUserAvatarFileId()
+    {
+        return $this->getUserProfilePhotos($this->getUserId, null, 1)["result"]["photos"][0][0]["file_id"] ?? null;
+    }
+
+    public function getUserAvatarFilePath()
+    {
+        return $this->getFile($this->getUserAvatarFileId())['result']['file_path'];
+    }
+
+    public function getUserAvatarUrl()
+    {
+        return $this->file($this->getUserAvatarFilePath());
+    }
+
     /**
      * Отправляет отладочную информацию о текущем запросе в формате текста или JSON.
      */
     public function debug($data = null, $tg_id = null)
     {
-        $data = $data ?? $this->request();
+        $data = $data ?? $this->request()->toJson();
 
         if (is_string($data)) {
             $decodedData = json_decode($data, true);
@@ -110,7 +127,7 @@ class LightBot extends Skeleton
         }
 
         $tg_id = $tg_id ?? $this->getUserId;
-        
+
         $this->sendOut($tg_id, "<pre>" . $jsonData . "</pre>");
         exit;
     }
@@ -394,6 +411,8 @@ class LightBot extends Skeleton
         // Приводим команду к массиву, если это строка
         $commands = is_array($command) ? $command : [$command];
 
+        $this->commandsList[] = $commands;
+
         // Преобразуем команды, добавляя "/" к каждой, если необходимо
         $commands = array_map(function ($cmd) {
             return "/" . ltrim($cmd, '/');
@@ -419,6 +438,52 @@ class LightBot extends Skeleton
 
 
     /**
+     * Собирает все реализованные команды, команды использовать в самом низу всех команд
+     */
+
+    public function getCommandList()
+    {
+        return array_merge(...$this->commandsList);
+    }
+
+    /**
+     * Проверка на сущестование, команды использовать в самом низу всех команд
+     */
+
+    public function isCommand()
+    {
+        return in_array($this->getCommandNoSlash(), $this->getCommandList(), true);
+    }
+
+    /**
+     * Возварщает команду или null
+     * 
+     * @return string|null
+     */
+    public function getCommand()
+    {
+        if (str_starts_with($this->getMessageText, '/')) {
+            return $this->getMessageText;
+        }
+
+        return null;
+    }
+
+    /**
+     * Возварщает команду без слеша или null
+     * 
+     * @return string|null
+     */
+    public function getCommandNoSlash()
+    {
+        if ($this->getCommand()) {
+            return ltrim($this->getCommand(), '/');
+        }
+
+        return null;
+    }
+
+    /**
      * Аругменты любой команды.
      * 
      * @return int|string|null Результат выполнения функции-обработчика.
@@ -426,12 +491,12 @@ class LightBot extends Skeleton
     public function commandArguments()
     {
         $this->anyCommand(function ($command) {
-            return self::getArgument($this->getMessageText, $command);
+            return self::getArgument($this->getCommand(), $command);
         });
     }
 
     /**
-     * Извлекает последнее слово из заданной строки, исключая определенную команду.
+     * Возвращает аргумент команды.
      *
      * @param string $str Входная строка.
      * @param string $command Команда, которую нужно исключить из входной строки.

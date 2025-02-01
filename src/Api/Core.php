@@ -35,6 +35,11 @@ class Core
         return Http::withoutVerifying()->get($url)->json();
     }
 
+    public function file($file_path)
+    {
+        $url = "https://api.telegram.org/file/bot" . (new Services)->getToken($this->bot) . "/" . $file_path;
+        return $url;
+    }
 
     /**
      * Получает все данные запроса от Telegram и возвращает их в виде массива.
