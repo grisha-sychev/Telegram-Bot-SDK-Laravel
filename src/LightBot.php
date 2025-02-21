@@ -97,7 +97,23 @@ class LightBot extends Skeleton
 
     public function getUserAvatarFilePath()
     {
-        return $this->getFile($this->getUserAvatarFileId())['result']['file_path'];
+        $fileId = $this->getUserAvatarFileId();
+
+        if (empty($fileId)) {
+            return null;
+        }
+
+        $file = $this->getFile($fileId);
+
+        if (!is_array($file) || !isset($file['result'])) {
+            return null;
+        }
+
+        if (!isset($file['result']['file_path'])) {
+            return null;
+        }
+
+        return $file['result']['file_path'];
     }
 
     public function getUserAvatarUrl()
