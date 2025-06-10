@@ -38,6 +38,10 @@ php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 ```bash
 php artisan teg:set
 ```
+
+```bash
+php artisan migrate
+```
 ## Раздел бота
 
 Все боты находяться в пути `app/Bots`, пример `MainBot`:
