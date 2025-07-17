@@ -1,4 +1,4 @@
 <?php
 
 namespace App\Bots;
-class AdstractBot extends \Teg\LightBot {}
+class AbstractBot extends \Teg\LightBot {}

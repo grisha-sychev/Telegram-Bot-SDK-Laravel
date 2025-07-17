@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Console\Commands;
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;

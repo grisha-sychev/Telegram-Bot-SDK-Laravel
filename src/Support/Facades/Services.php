@@ -27,7 +27,19 @@ class Services
      */
     public function getToken(string|null $bot)
     {
-        return config('tegbot.' . $bot);
+        if (!$bot) {
+            // Fallback на основной токен из конфигурации
+            return config('tegbot.token');
+        }
+
+        try {
+            // Получаем токен из базы данных
+            $botModel = \App\Models\Bot::byName($bot)->where('enabled', true)->first();
+            return $botModel ? $botModel->token : null;
+        } catch (\Exception $e) {
+            // Fallback на конфигурацию если БД недоступна
+            return config('tegbot.' . $bot);
+        }
     }
 
     /**

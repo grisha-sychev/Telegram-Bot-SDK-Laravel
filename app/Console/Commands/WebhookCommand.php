@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Console\Commands;
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -13,6 +13,7 @@ class WebhookCommand extends Command
                             {url? : Webhook URL (for set action)}
                             {--secret= : Webhook secret token}
                             {--max-connections=40 : Max webhook connections}
+                            {--no-ssl : Disable SSL verification}
                             {--force : Force action without confirmation}';
     
     protected $description = 'Управление webhook TegBot';
@@ -113,7 +114,20 @@ class WebhookCommand extends Command
 
         // Выполняем запрос
         try {
-            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+            $http = Http::timeout(30);
+            
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+                $this->warn('⚠️  SSL проверка отключена');
+            }
+            
+            $response = $http->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
             
             if ($response->successful()) {
                 $result = $response->json();
@@ -144,7 +158,19 @@ class WebhookCommand extends Command
     private function getWebhookInfo(string $token): int
     {
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
             
             if ($response->successful()) {
                 $result = $response->json();
@@ -176,7 +202,19 @@ class WebhookCommand extends Command
         }
 
         try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            $http = Http::timeout(10);
+            
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->post("https://api.telegram.org/bot{$token}/deleteWebhook");
             
             if ($response->successful()) {
                 $result = $response->json();
@@ -206,7 +244,19 @@ class WebhookCommand extends Command
 
         // Получаем информацию о webhook
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
             
             if (!$response->successful()) {
                 $this->error('❌ Не удалось получить информацию о webhook');
@@ -228,7 +278,19 @@ class WebhookCommand extends Command
             $this->line('🔍 Проверка доступности...');
             
             try {
-                $testResponse = Http::timeout(10)->get($webhookUrl);
+                $testHttp = Http::timeout(10);
+                
+                if ($this->option('no-ssl')) {
+                    $testHttp = $testHttp->withOptions([
+                        'verify' => false,
+                        'curl' => [
+                            CURLOPT_SSL_VERIFYPEER => false,
+                            CURLOPT_SSL_VERIFYHOST => false,
+                        ]
+                    ]);
+                }
+                
+                $testResponse = $testHttp->get($webhookUrl);
                 $this->info("  ✅ HTTP статус: {$testResponse->status()}");
             } catch (\Exception $e) {
                 $this->warn("  ⚠️  HTTP недоступен: {$e->getMessage()}");
@@ -368,12 +430,23 @@ class WebhookCommand extends Command
         ];
 
         try {
-            $response = Http::timeout(10)
+            $http = Http::timeout(10)
                 ->withHeaders([
                     'X-Telegram-Bot-Api-Secret-Token' => $secret,
                     'Content-Type' => 'application/json'
-                ])
-                ->post($webhookUrl, $testUpdate);
+                ]);
+            
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->post($webhookUrl, $testUpdate);
 
             $this->info("  📤 Отправлен тестовый запрос");
             $this->line("  📥 Ответ: HTTP {$response->status()}");

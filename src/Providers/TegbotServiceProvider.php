@@ -4,12 +4,12 @@ namespace Teg\Providers;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Teg\Console\Commands\HealthCommand;
-use Teg\Console\Commands\SetupCommand;
-use Teg\Console\Commands\ConfigCommand;
-use Teg\Console\Commands\StatsCommand;
-use Teg\Console\Commands\WebhookCommand;
-use Teg\Console\Commands\MigrateCommand;
+// use Teg\Console\Commands\HealthCommand;
+// use Teg\Console\Commands\SetupCommand;
+// use Teg\Console\Commands\ConfigCommand;
+// use Teg\Console\Commands\StatsCommand;
+// use Teg\Console\Commands\WebhookCommand;
+// use Teg\Console\Commands\MigrateCommand;
 
 /**
  * TegBot Service Provider
@@ -21,12 +21,13 @@ class TegbotServiceProvider extends ServiceProvider
      * All console commands.
      */
     protected $commands = [
-        HealthCommand::class,
-        SetupCommand::class,
-        ConfigCommand::class,
-        StatsCommand::class,
-        WebhookCommand::class,
-        MigrateCommand::class,
+        // Команды временно отключены до публикации в приложение
+        // HealthCommand::class,
+        // SetupCommand::class,
+        // ConfigCommand::class,
+        // StatsCommand::class,
+        // WebhookCommand::class,
+        // MigrateCommand::class,
     ];
 
     /**
@@ -41,7 +42,7 @@ class TegbotServiceProvider extends ServiceProvider
         );
 
         // Регистрируем команды только для консоли
-        if ($this->app->runningInConsole()) {
+        if ($this->app->runningInConsole() && !empty($this->commands)) {
             $this->commands($this->commands);
         }
     }

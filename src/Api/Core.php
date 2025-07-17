@@ -25,6 +25,22 @@ class Core
     public ?string $hostname = null;
 
     /**
+     * Устанавливает токен бота напрямую
+     */
+    public function setToken(string $token): void
+    {
+        $this->token = $token;
+    }
+
+    /**
+     * Устанавливает имя бота для получения токена из БД
+     */
+    public function setBotName(string $botName): void
+    {
+        $this->bot = $botName;
+    }
+
+    /**
      * Отправляет все данные запроса от Telegram и возвращает их в виде массива.
      *
      * Данные запроса от Telegram в виде обьекта.
@@ -36,7 +52,9 @@ class Core
         
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
-                $url = "https://api.telegram.org/bot" . (new Services)->getToken($this->bot) . "/" . $method . ($query ? '?' . http_build_query($query) : '');
+                // Используем прямой токен если установлен, иначе получаем через Services
+                $token = $this->token ?? (new Services)->getToken($this->bot);
+                $url = "https://api.telegram.org/bot" . $token . "/" . $method . ($query ? '?' . http_build_query($query) : '');
                 
                 $response = Http::withoutVerifying()
                     ->timeout(30)
@@ -99,7 +117,9 @@ class Core
 
     public function file($file_path)
     {
-        $url = "https://api.telegram.org/file/bot" . (new Services)->getToken($this->bot) . "/" . $file_path;
+        // Используем прямой токен если установлен, иначе получаем через Services
+        $token = $this->token ?? (new Services)->getToken($this->bot);
+        $url = "https://api.telegram.org/file/bot" . $token . "/" . $file_path;
         return $url;
     }
 

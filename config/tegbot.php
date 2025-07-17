@@ -7,11 +7,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | Конфигурация для пакета TegBot - фреймворка для создания Telegram ботов
+    | с поддержкой мультибота
     |
     */
 
     /**
-     * Токен бота Telegram
+     * Токен бота Telegram (для обратной совместимости)
      * Получите в @BotFather
      */
     'token' => env('TEGBOT_TOKEN'),
@@ -25,6 +26,47 @@ return [
      * Часовой пояс для бота
      */
     'timezone' => env('TEGBOT_TIMEZONE', config('app.timezone', 'UTC')),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Multi-Bot Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Настройки для мультиботной архитектуры. Боты хранятся в базе данных
+    | и управляются через команды php artisan teg:set и php artisan teg:bot
+    |
+    */
+    'multibot' => [
+        /**
+         * Включить мультиботную систему
+         */
+        'enabled' => env('TEGBOT_MULTIBOT_ENABLED', true),
+
+        /**
+         * Автоматически создавать классы ботов
+         */
+        'auto_create_classes' => env('TEGBOT_AUTO_CREATE_CLASSES', true),
+
+        /**
+         * Путь для классов ботов
+         */
+        'bots_path' => env('TEGBOT_BOTS_PATH', 'App\\Bots'),
+
+        /**
+         * Namespace для классов ботов
+         */
+        'bots_namespace' => env('TEGBOT_BOTS_NAMESPACE', 'App\\Bots'),
+
+        /**
+         * Максимальное количество ботов
+         */
+        'max_bots' => env('TEGBOT_MAX_BOTS', 100),
+
+        /**
+         * Автоматически активировать новых ботов
+         */
+        'auto_enable' => env('TEGBOT_AUTO_ENABLE_BOTS', true),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -65,12 +107,12 @@ return [
     */
     'security' => [
         /**
-         * Webhook secret token для верификации запросов
+         * Webhook secret token для верификации запросов (глобальный)
          */
         'webhook_secret' => env('TEGBOT_WEBHOOK_SECRET'),
 
         /**
-         * ID администраторов бота (разделённые запятыми)
+         * ID администраторов бота (разделённые запятыми) - глобальные
          */
         'admin_ids' => array_filter(explode(',', env('TEGBOT_ADMIN_IDS', ''))),
 
@@ -164,6 +206,11 @@ return [
          * Логировать ошибки API
          */
         'log_api_errors' => env('TEGBOT_LOG_API_ERRORS', true),
+
+        /**
+         * Логировать действия мультибота
+         */
+        'log_multibot' => env('TEGBOT_LOG_MULTIBOT', true),
     ],
 
     /*
@@ -218,6 +265,11 @@ return [
          * Автоматическая очистка старых данных
          */
         'auto_cleanup' => env('TEGBOT_DB_AUTO_CLEANUP', true),
+
+        /**
+         * Хранить историю команд ботов
+         */
+        'store_commands_history' => env('TEGBOT_STORE_COMMANDS_HISTORY', true),
     ],
 
     /*
@@ -240,6 +292,16 @@ return [
          * Типы обновлений для получения
          */
         'allowed_updates' => array_filter(explode(',', env('TEGBOT_WEBHOOK_UPDATES', 'message,callback_query,inline_query'))),
+
+        /**
+         * Автоматически генерировать webhook secret для новых ботов
+         */
+        'auto_generate_secret' => env('TEGBOT_AUTO_GENERATE_WEBHOOK_SECRET', true),
+
+        /**
+         * Базовый URL для webhook'ов (если отличается от APP_URL)
+         */
+        'base_url' => env('TEGBOT_WEBHOOK_BASE_URL', env('APP_URL')),
     ],
 
     /*
@@ -267,6 +329,16 @@ return [
          * Размер пакета
          */
         'batch_size' => env('TEGBOT_BATCH_SIZE', 10),
+
+        /**
+         * Кэширование информации о ботах
+         */
+        'cache_bot_info' => env('TEGBOT_CACHE_BOT_INFO', true),
+
+        /**
+         * Время кэширования информации о ботах (секунды)
+         */
+        'cache_bot_info_ttl' => env('TEGBOT_CACHE_BOT_INFO_TTL', 3600),
     ],
 
     /*
@@ -281,6 +353,7 @@ return [
         'health_checks' => [
             'enabled' => env('TEGBOT_HEALTH_CHECKS', true),
             'interval' => env('TEGBOT_HEALTH_CHECK_INTERVAL', 300), // 5 минут
+            'check_all_bots' => env('TEGBOT_HEALTH_CHECK_ALL_BOTS', true),
         ],
 
         /**
@@ -298,6 +371,7 @@ return [
         'metrics' => [
             'enabled' => env('TEGBOT_METRICS_ENABLED', true),
             'retention_days' => env('TEGBOT_METRICS_RETENTION', 30),
+            'track_per_bot' => env('TEGBOT_METRICS_PER_BOT', true),
         ],
     ],
 
@@ -321,5 +395,10 @@ return [
          * AI интеграция
          */
         'ai_integration' => env('TEGBOT_AI_INTEGRATION', false),
+
+        /**
+         * Автоматическое обновление webhook'ов при изменении конфигурации
+         */
+        'auto_update_webhooks' => env('TEGBOT_AUTO_UPDATE_WEBHOOKS', false),
     ],
 ];
