@@ -60,53 +60,10 @@ composer require tegbot/tegbot
 php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 ```
 
-### 3. Настройка
+### 3. Создание бота
 
-```env
-TEGBOT_TOKEN=your_bot_token_here
-TEGBOT_WEBHOOK_SECRET=your_random_secret
-TEGBOT_ADMIN_IDS=123456789
 ```
-
-### 4. Создание бота
-
-```php
-<?php
-
-namespace App\Bots;
-
-use Teg\Modules\UserModule;
-use Teg\Modules\StateModule;
-
-class MyBot extends AdstractBot
-{
-    use StateModule, UserModule;
-
-    public function main(): void
-    {
-        // Регистрация команд
-        $this->registerCommand('start', function () {
-            $this->sendSelf('🚀 Привет! Я готов к работе!');
-        }, [
-            'description' => 'Запуск бота',
-        ]);
-
-        // Автоматическая обработка команд
-        if ($this->hasMessageText() && $this->isMessageCommand()) {
-            $this->handleCommand($this->getMessageText);
-        }
-    }
-}
-```
-
-### 5. Настройка маршрута
-
-```php
-// routes/tegbot.php
-Route::post('/telegram/webhook', function () {
-    $bot = new \App\Bots\MyBot();
-    return $bot->safeMain(); // Безопасная обработка
-});
+php artisan teg:set
 ```
 
 ## 🆕 Новые возможности v2.0
