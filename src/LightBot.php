@@ -22,9 +22,18 @@ class LightBot extends Skeleton
     public $getUsername;
 
     public array $commandsList;
+    
+    // Новые свойства для middleware
+    protected array $middleware = [];
+    protected array $globalMiddleware = [];
 
     public function __construct()
     {
+        // Валидация входящих данных
+        if (!$this->isValidWebhookRequest()) {
+            return;
+        }
+
         $this->getCallback = $this->getCallbackQuery();
         $this->getMessage = $this->getMessage();
 
@@ -33,6 +42,600 @@ class LightBot extends Skeleton
         $this->getUsername = isset($this->getMessage) ? $this->getMessage->getFrom()->getUsername() : (isset($this->getCallback) ? $this->getCallback->getFrom()->getUsername() : null);
         $this->getMessageText = isset($this->getMessage) ? $this->getMessage->getText() : null;
         $this->getMessageId = isset($this->getMessage) ? $this->getMessage->getMessageId() : (isset($this->getCallback) ? $this->getCallback->getMessage()->getMessageId()  : null);
+        
+        // Регистрируем базовые middleware
+        $this->registerDefaultMiddleware();
+    }
+
+    /**
+     * Регистрирует middleware для обработки сообщений
+     */
+    public function middleware($middleware): self
+    {
+        $this->middleware[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * Регистрирует глобальный middleware для всех сообщений
+     */
+    public function globalMiddleware($middleware): self
+    {
+        $this->globalMiddleware[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * Регистрирует базовые middleware
+     */
+    protected function registerDefaultMiddleware(): void
+    {
+        // Middleware для логирования активности
+        $this->globalMiddleware(function ($update, $next) {
+            $this->logActivity('message_received', [
+                'user_id' => $this->getUserId,
+                'message_type' => $this->getMessageType(),
+                'has_text' => $this->hasMessageText(),
+            ]);
+            
+            return $next($update);
+        });
+
+        // Middleware для анти-спама (базовый)
+        $this->globalMiddleware(function ($update, $next) {
+            if ($this->isSpamMessage()) {
+                $this->logActivity('spam_blocked', ['user_id' => $this->getUserId]);
+                return null;
+            }
+            
+            return $next($update);
+        });
+    }
+
+    /**
+     * Выполняет middleware конвейер
+     */
+    protected function runThroughMiddleware($update, callable $finalCallback)
+    {
+        $middleware = array_merge($this->globalMiddleware, $this->middleware);
+        
+        $pipeline = array_reduce(
+            array_reverse($middleware),
+            function ($next, $middleware) {
+                return function ($update) use ($middleware, $next) {
+                    return $middleware($update, $next);
+                };
+            },
+            $finalCallback
+        );
+
+        return $pipeline($update);
+    }
+
+    /**
+     * Определяет тип сообщения
+     */
+    public function getMessageType(): string
+    {
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+
+        if (isset($message['photo'])) return 'photo';
+        if (isset($message['video'])) return 'video';
+        if (isset($message['document'])) return 'document';
+        if (isset($message['sticker'])) return 'sticker';
+        if (isset($message['voice'])) return 'voice';
+        if (isset($message['video_note'])) return 'video_note';
+        if (isset($message['animation'])) return 'animation';
+        if (isset($message['contact'])) return 'contact';
+        if (isset($message['location'])) return 'location';
+        if ($this->hasMessageText()) return 'text';
+        
+        return 'unknown';
+    }
+
+    /**
+     * Простая проверка на спам (можно расширить)
+     */
+    protected function isSpamMessage(): bool
+    {
+        // Проверка частоты сообщений от пользователя
+        $cacheKey = "telegram_user_messages_{$this->getUserId}";
+        $messages = cache()->get($cacheKey, 0);
+        
+        if ($messages > 20) { // Больше 20 сообщений в минуту
+            return true;
+        }
+        
+        cache()->put($cacheKey, $messages + 1, 60); // Счетчик на 1 минуту
+        
+        return false;
+    }
+
+    /**
+     * Логирование активности бота
+     */
+    protected function logActivity(string $event, array $data = []): void
+    {
+        if (config('tegbot.settings.enable_detailed_logging', false)) {
+            \Log::info("Telegram Bot Activity: {$event}", array_merge([
+                'bot' => $this->bot,
+                'timestamp' => now()->toISOString(),
+            ], $data));
+        }
+    }
+
+    /**
+     * Регистрирует команду с расширенными возможностями
+     */
+    public function registerCommand(string $command, callable $callback, array $options = []): self
+    {
+        $commandData = [
+            'command' => $command,
+            'callback' => $callback,
+            'description' => $options['description'] ?? '',
+            'args' => $options['args'] ?? [],
+            'middleware' => $options['middleware'] ?? [],
+            'private_only' => $options['private_only'] ?? true,
+            'admin_only' => $options['admin_only'] ?? false,
+        ];
+
+        $this->commandsList[$command] = $commandData;
+        return $this;
+    }
+
+    /**
+     * Парсит аргументы команды
+     */
+    public function parseCommandArgs(string $text): array
+    {
+        $parts = explode(' ', trim($text));
+        $command = array_shift($parts);
+        
+        $args = [];
+        $currentArg = '';
+        $inQuotes = false;
+        
+        foreach ($parts as $part) {
+            if (!$inQuotes && (str_starts_with($part, '"') || str_starts_with($part, "'"))) {
+                $inQuotes = true;
+                $currentArg = substr($part, 1);
+                
+                if (str_ends_with($part, $part[0]) && strlen($part) > 1) {
+                    $args[] = substr($currentArg, 0, -1);
+                    $currentArg = '';
+                    $inQuotes = false;
+                }
+            } elseif ($inQuotes) {
+                if (str_ends_with($part, '"') || str_ends_with($part, "'")) {
+                    $currentArg .= ' ' . substr($part, 0, -1);
+                    $args[] = $currentArg;
+                    $currentArg = '';
+                    $inQuotes = false;
+                } else {
+                    $currentArg .= ' ' . $part;
+                }
+            } else {
+                $args[] = $part;
+            }
+        }
+        
+        if ($currentArg) {
+            $args[] = $currentArg;
+        }
+
+        return [
+            'command' => $command,
+            'args' => $args,
+            'raw' => $text,
+        ];
+    }
+
+    /**
+     * Проверяет права доступа для команды
+     */
+    protected function hasCommandAccess(array $commandData): bool
+    {
+        // Проверка на приватный чат
+        if ($commandData['private_only'] && $this->getChatType() !== 'private') {
+            return false;
+        }
+
+        // Проверка на админа (можно расширить)
+        if ($commandData['admin_only'] && !$this->isAdmin()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Получает тип чата
+     */
+    public function getChatType(): string
+    {
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+        return $message['chat']['type'] ?? 'unknown';
+    }
+
+    /**
+     * Проверяет является ли пользователь админом (базовая проверка)
+     */
+    protected function isAdmin(): bool
+    {
+        $adminIds = config('tegbot.settings.admin_ids', []);
+        return in_array($this->getUserId, $adminIds);
+    }
+
+    /**
+     * Генерирует справку по командам
+     */
+    public function generateHelp(): string
+    {
+        $help = "🤖 **Доступные команды:**\n\n";
+        
+        foreach ($this->commandsList as $command => $data) {
+            if (is_array($data) && isset($data['description'])) {
+                $help .= "/{$command}";
+                
+                if (!empty($data['args'])) {
+                    foreach ($data['args'] as $arg) {
+                        $help .= " `{$arg}`";
+                    }
+                }
+                
+                $help .= " - {$data['description']}\n";
+            }
+        }
+        
+        return $help;
+    }
+
+    /**
+     * Улучшенный обработчик команд с валидацией аргументов
+     */
+    public function handleCommand(string $text): bool
+    {
+        $parsed = $this->parseCommandArgs($text);
+        $commandName = ltrim($parsed['command'], '/');
+        
+        if (!isset($this->commandsList[$commandName])) {
+            return false;
+        }
+
+        $commandData = $this->commandsList[$commandName];
+        
+        // Проверяем права доступа
+        if (!$this->hasCommandAccess($commandData)) {
+            $this->sendSelf('❌ У вас нет прав для выполнения этой команды.');
+            return true;
+        }
+
+        // Проверяем количество аргументов
+        if (isset($commandData['args']) && count($parsed['args']) < count($commandData['args'])) {
+            $help = "❌ Недостаточно аргументов.\n\n";
+            $help .= "**Использование:** /{$commandName}";
+            foreach ($commandData['args'] as $arg) {
+                $help .= " `{$arg}`";
+            }
+            $this->sendSelf($help);
+            return true;
+        }
+
+        try {
+            // Выполняем middleware команды
+            if (!empty($commandData['middleware'])) {
+                foreach ($commandData['middleware'] as $middleware) {
+                    if (!$middleware($this, $parsed)) {
+                        return true; // Middleware заблокировал выполнение
+                    }
+                }
+            }
+
+            // Выполняем команду
+            $callback = $commandData['callback'];
+            $callback = $callback->bindTo($this, $this);
+            $callback($parsed['args'], $parsed);
+
+            $this->logActivity('command_executed', [
+                'command' => $commandName,
+                'args_count' => count($parsed['args']),
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logError($e);
+            $this->sendSelf('❌ Произошла ошибка при выполнении команды.');
+        }
+
+        return true;
+    }
+
+    /**
+     * Валидация входящего webhook запроса
+     */
+    private function isValidWebhookRequest(): bool
+    {
+        $request = request();
+        
+        // Проверяем что это POST запрос
+        if (!$request->isMethod('POST')) {
+            return false;
+        }
+
+        // Проверяем что есть данные
+        if (!$request->hasAny(['message', 'callback_query', 'channel_post', 'edited_message'])) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Проверяет есть ли текст в сообщении
+     */
+    public function hasMessageText(): bool
+    {
+        return !empty($this->getMessageText);
+    }
+
+    /**
+     * Проверяет является ли сообщение командой (начинается с /)
+     */
+    public function isMessageCommand(): bool
+    {
+        return $this->hasMessageText() && str_starts_with($this->getMessageText, '/');
+    }
+
+    /**
+     * Проверяет содержит ли сообщение медиа контент без текста
+     */
+    public function hasMediaWithoutText(): bool
+    {
+        if (!$this->getMessage) {
+            return false;
+        }
+
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+
+        // Проверяем наличие медиа контента
+        $hasMedia = isset($message['photo']) || 
+                   isset($message['video']) || 
+                   isset($message['document']) || 
+                   isset($message['sticker']) || 
+                   isset($message['voice']) || 
+                   isset($message['video_note']) || 
+                   isset($message['animation']);
+
+        return $hasMedia && empty($this->getMessageText);
+    }
+
+    /**
+     * Безопасное выполнение основного метода с обработкой ошибок
+     */
+    public function safeMain(): void
+    {
+        try {
+            // Проверяем есть ли сообщение
+            if (!$this->getMessage && !$this->getCallback) {
+                return;
+            }
+
+            // Запускаем через middleware конвейер
+            $this->runThroughMiddleware(request()->all(), function ($update) {
+                // Игнорируем медиа без текста
+                if ($this->hasMediaWithoutText()) {
+                    return;
+                }
+
+                // Игнорируем текст который не является командой (если нет callback)
+                if (!$this->getCallback && $this->hasMessageText() && !$this->isMessageCommand()) {
+                    return;
+                }
+
+                // Вызываем основной метод если он существует
+                if (method_exists($this, 'main')) {
+                    $this->main();
+                }
+            });
+
+        } catch (\Exception $e) {
+            $this->logError($e);
+            
+            // В продакшне не показываем детали ошибки
+            if (app()->environment('production')) {
+                // Можно отправить общее сообщение об ошибке
+                // $this->sendSelf('Произошла ошибка. Попробуйте позже.');
+            }
+        }
+    }
+
+    /**
+     * Логирование ошибок
+     */
+    private function logError(\Exception $e): void
+    {
+        \Log::error('Telegram Bot Error', [
+            'bot' => $this->bot ?? 'unknown',
+            'user_id' => $this->getUserId ?? 'unknown',
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+    }
+
+    /**
+     * Получает информацию о фото в сообщении
+     */
+    public function getPhotoInfo(): ?array
+    {
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+        
+        if (!isset($message['photo'])) {
+            return null;
+        }
+
+        // Telegram отправляет массив размеров фото
+        $photos = $message['photo'];
+        
+        return [
+            'count' => count($photos),
+            'sizes' => $photos,
+            'largest' => end($photos), // Самый большой размер
+            'caption' => $message['caption'] ?? null,
+        ];
+    }
+
+    /**
+     * Получает информацию о видео в сообщении  
+     */
+    public function getVideoInfo(): ?array
+    {
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+        
+        if (!isset($message['video'])) {
+            return null;
+        }
+
+        $video = $message['video'];
+        
+        return [
+            'file_id' => $video['file_id'],
+            'file_unique_id' => $video['file_unique_id'],
+            'width' => $video['width'] ?? 0,
+            'height' => $video['height'] ?? 0,
+            'duration' => $video['duration'] ?? 0,
+            'file_size' => $video['file_size'] ?? null,
+            'mime_type' => $video['mime_type'] ?? null,
+            'caption' => $message['caption'] ?? null,
+        ];
+    }
+
+    /**
+     * Получает информацию о документе в сообщении
+     */
+    public function getDocumentInfo(): ?array
+    {
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+        
+        if (!isset($message['document'])) {
+            return null;
+        }
+
+        $document = $message['document'];
+        
+        return [
+            'file_id' => $document['file_id'],
+            'file_unique_id' => $document['file_unique_id'],
+            'file_name' => $document['file_name'] ?? null,
+            'mime_type' => $document['mime_type'] ?? null,
+            'file_size' => $document['file_size'] ?? null,
+            'caption' => $message['caption'] ?? null,
+        ];
+    }
+
+    /**
+     * Скачивает файл по file_id
+     */
+    public function downloadFile(string $fileId): ?array
+    {
+        try {
+            // Получаем информацию о файле
+            $fileInfo = $this->method('getFile', ['file_id' => $fileId]);
+            
+            if (!isset($fileInfo['ok']) || !$fileInfo['ok']) {
+                return null;
+            }
+
+            $filePath = $fileInfo['result']['file_path'];
+            $fileUrl = $this->file($filePath);
+            
+            // Скачиваем файл
+            $response = \Http::withoutVerifying()->timeout(60)->get($fileUrl);
+            
+            if ($response->successful()) {
+                return [
+                    'content' => $response->body(),
+                    'size' => $response->header('Content-Length'),
+                    'type' => $response->header('Content-Type'),
+                    'url' => $fileUrl,
+                    'path' => $filePath,
+                ];
+            }
+
+        } catch (\Exception $e) {
+            $this->logError($e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Сохраняет файл на диск
+     */
+    public function saveFile(string $fileId, string $directory = 'telegram'): ?string
+    {
+        $fileData = $this->downloadFile($fileId);
+        
+        if (!$fileData) {
+            return null;
+        }
+
+        try {
+            $fileName = uniqid() . '_' . basename($fileData['path']);
+            $fullPath = storage_path("app/public/{$directory}/{$fileName}");
+            
+            // Создаем директорию если не существует
+            $dir = dirname($fullPath);
+            if (!file_exists($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            file_put_contents($fullPath, $fileData['content']);
+            
+            return "storage/{$directory}/{$fileName}";
+
+        } catch (\Exception $e) {
+            $this->logError($e);
+            return null;
+        }
+    }
+
+    /**
+     * Обработчик для медиа сообщений с текстом
+     */
+    public function mediaWithCaption($callback): void
+    {
+        if (!$this->getMessage) {
+            return;
+        }
+
+        $request = request()->all();
+        $message = $request['message'] ?? [];
+        $caption = $message['caption'] ?? null;
+
+        // Если есть подпись к медиа
+        if ($caption && $this->hasMediaWithoutText() === false) {
+            $mediaInfo = null;
+            
+            if (isset($message['photo'])) {
+                $mediaInfo = ['type' => 'photo', 'data' => $this->getPhotoInfo()];
+            } elseif (isset($message['video'])) {
+                $mediaInfo = ['type' => 'video', 'data' => $this->getVideoInfo()];
+            } elseif (isset($message['document'])) {
+                $mediaInfo = ['type' => 'document', 'data' => $this->getDocumentInfo()];
+            }
+
+            if ($mediaInfo) {
+                $callback = $callback->bindTo($this, $this);
+                $callback($mediaInfo, $caption);
+            }
+        }
     }
 
     /**
