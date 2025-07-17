@@ -37,17 +37,7 @@ composer require tegbot/tegbot
 php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 ```
 
-### 3. Настройка .env
-
-```env
-TEGBOT_DEBUG=false
-TEGBOT_WEBHOOK_SECRET=your_random_secret_key
-TEGBOT_MULTIBOT_ENABLED=true
-TEGBOT_AUTO_CREATE_CLASSES=true
-TEGBOT_WEBHOOK_BASE_URL=https://yourdomain.com
-```
-
-### 4. Запуск миграций
+### 3. Запуск миграций
 
 ```bash
 php artisan migrate
