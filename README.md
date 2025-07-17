@@ -89,9 +89,7 @@ php artisan teg:set
 
 namespace App\Bots;
 
-use Teg\LightBot;
-
-class MyshopBot extends LightBot
+class MyshopBot extends AbstractBot
 {
     public function main(): void
     {
