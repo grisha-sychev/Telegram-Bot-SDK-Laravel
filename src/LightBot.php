@@ -2,6 +2,7 @@
 
 namespace Teg;
 
+use App\Enums\MediaType;
 use Closure;
 use Illuminate\Support\Facades\File;
 use Teg\Api\Skeleton;
@@ -31,13 +32,31 @@ class LightBot extends Skeleton
      * Разрешить обработку медиафайлов без текста
      * @var bool
      */
-    protected bool $allowMedia = false;
+    protected bool $allowMedia = true;
     
     /**
      * Разрешить обработку обычных текстовых сообщений (не команд)
      * @var bool
      */
     protected bool $allowTextMessages = false;
+    
+    /**
+     * Зарегистрированные типы медиа через метод media()
+     * @var array
+     */
+    protected array $registeredMediaTypes = [];
+    
+    /**
+     * Fallback функция для необработанных сообщений
+     * @var callable|null
+     */
+    protected $failCallback = null;
+    
+    /**
+     * Флаг что сообщение было обработано
+     * @var bool
+     */
+    protected bool $messageProcessed = false;
 
     public function __construct()
     {
@@ -125,22 +144,97 @@ class LightBot extends Skeleton
     }
 
     /**
-     * Определяет тип сообщения
+     * Определяет тип сообщения (включает все типы из Telegram Bot API)
      */
     public function getMessageType(): string
     {
         $request = request()->all();
         $message = $request['message'] ?? [];
 
+        // Медиа контент
         if (isset($message['photo'])) return 'photo';
         if (isset($message['video'])) return 'video';
+        if (isset($message['audio'])) return 'audio';
         if (isset($message['document'])) return 'document';
         if (isset($message['sticker'])) return 'sticker';
         if (isset($message['voice'])) return 'voice';
         if (isset($message['video_note'])) return 'video_note';
         if (isset($message['animation'])) return 'animation';
+        
+        // Контактная информация
         if (isset($message['contact'])) return 'contact';
         if (isset($message['location'])) return 'location';
+        if (isset($message['venue'])) return 'venue';
+        
+        // Интерактивный контент
+        if (isset($message['poll'])) return 'poll';
+        if (isset($message['dice'])) return 'dice';
+        if (isset($message['game'])) return 'game';
+        if (isset($message['story'])) return 'story';
+        
+        // Платежи
+        if (isset($message['invoice'])) return 'invoice';
+        if (isset($message['successful_payment'])) return 'successful_payment';
+        
+        // Видеочаты
+        if (isset($message['video_chat_started'])) return 'video_chat_started';
+        if (isset($message['video_chat_ended'])) return 'video_chat_ended';
+        if (isset($message['video_chat_participants_invited'])) return 'video_chat_participants_invited';
+        if (isset($message['video_chat_scheduled'])) return 'video_chat_scheduled';
+        
+        // Системные сообщения чата
+        if (isset($message['message_auto_delete_timer_changed'])) return 'message_auto_delete_timer_changed';
+        if (isset($message['migrate_to_chat_id'])) return 'migrate_to_chat_id';
+        if (isset($message['migrate_from_chat_id'])) return 'migrate_from_chat_id';
+        if (isset($message['pinned_message'])) return 'pinned_message';
+        if (isset($message['new_chat_members'])) return 'new_chat_members';
+        if (isset($message['left_chat_member'])) return 'left_chat_member';
+        if (isset($message['new_chat_title'])) return 'new_chat_title';
+        if (isset($message['new_chat_photo'])) return 'new_chat_photo';
+        if (isset($message['delete_chat_photo'])) return 'delete_chat_photo';
+        if (isset($message['group_chat_created'])) return 'group_chat_created';
+        if (isset($message['supergroup_chat_created'])) return 'supergroup_chat_created';
+        if (isset($message['channel_chat_created'])) return 'channel_chat_created';
+        
+        // Форумы
+        if (isset($message['forum_topic_created'])) return 'forum_topic_created';
+        if (isset($message['forum_topic_edited'])) return 'forum_topic_edited';
+        if (isset($message['forum_topic_closed'])) return 'forum_topic_closed';
+        if (isset($message['forum_topic_reopened'])) return 'forum_topic_reopened';
+        if (isset($message['general_forum_topic_hidden'])) return 'general_forum_topic_hidden';
+        if (isset($message['general_forum_topic_unhidden'])) return 'general_forum_topic_unhidden';
+        
+        // Права и разрешения
+        if (isset($message['write_access_allowed'])) return 'write_access_allowed';
+        
+        // Sharing и расшаривание
+        if (isset($message['user_shared'])) return 'user_shared';
+        if (isset($message['chat_shared'])) return 'chat_shared';
+        
+        // Конкурсы и подарки
+        if (isset($message['giveaway'])) return 'giveaway';
+        if (isset($message['giveaway_winners'])) return 'giveaway_winners';
+        if (isset($message['giveaway_completed'])) return 'giveaway_completed';
+        
+        // Буст каналов
+        if (isset($message['boost_added'])) return 'boost_added';
+        
+        // Фон чата
+        if (isset($message['chat_background_set'])) return 'chat_background_set';
+        
+        // Веб-приложения
+        if (isset($message['web_app_data'])) return 'web_app_data';
+        
+        // Passport данные
+        if (isset($message['passport_data'])) return 'passport_data';
+        
+        // Proximity alert
+        if (isset($message['proximity_alert_triggered'])) return 'proximity_alert_triggered';
+        
+        // Автоудаление
+        if (isset($message['message_auto_delete_timer_changed'])) return 'message_auto_delete_timer_changed';
+        
+        // Текстовое сообщение
         if ($this->hasMessageText()) return 'text';
         
         return 'unknown';
@@ -354,6 +448,8 @@ class LightBot extends Skeleton
                 'command' => $commandName,
                 'args_count' => count($parsed['args']),
             ]);
+            
+            $this->messageProcessed = true;
 
         } catch (\Exception $e) {
             $this->logError($e);
@@ -414,11 +510,19 @@ class LightBot extends Skeleton
         // Проверяем наличие медиа контента
         $hasMedia = isset($message['photo']) || 
                    isset($message['video']) || 
+                   isset($message['audio']) || 
                    isset($message['document']) || 
                    isset($message['sticker']) || 
                    isset($message['voice']) || 
                    isset($message['video_note']) || 
-                   isset($message['animation']);
+                   isset($message['animation']) || 
+                   isset($message['contact']) || 
+                   isset($message['location']) || 
+                   isset($message['venue']) || 
+                   isset($message['poll']) || 
+                   isset($message['dice']) || 
+                   isset($message['game']) || 
+                   isset($message['story']);
 
         return $hasMedia && empty($this->getMessageText);
     }
@@ -429,6 +533,9 @@ class LightBot extends Skeleton
     public function safeMain(): void
     {
         try {
+            // Сбрасываем флаг обработки для нового сообщения
+            $this->messageProcessed = false;
+            
             // Проверяем есть ли сообщение
             if (!$this->getMessage && !$this->getCallback) {
                 return;
@@ -441,14 +548,19 @@ class LightBot extends Skeleton
                     return;
                 }
 
-                // Проверяем нужно ли игнорировать текстовые сообщения
-                if (!$this->getCallback && $this->hasMessageText() && !$this->isMessageCommand() && $this->shouldIgnoreTextMessage()) {
-                    return;
-                }
-
                 // Вызываем основной метод если он существует
                 if (method_exists($this, 'main')) {
                     $this->main();
+                }
+                
+                // Если сообщение не было обработано и есть fallback - вызываем его
+                if (!$this->messageProcessed && $this->failCallback) {
+                    if ($this->failCallback instanceof \Closure) {
+                        $callback = $this->failCallback->bindTo($this, $this);
+                    } else {
+                        $callback = $this->failCallback;
+                    }
+                    $callback();
                 }
             });
 
@@ -490,12 +602,50 @@ class LightBot extends Skeleton
         if ($this->allowMedia) {
             return false;
         }
+        
+        // Если есть зарегистрированные типы медиа через media() - не игнорируем
+        if (!empty($this->registeredMediaTypes)) {
+            return false;
+        }
 
         // Проверяем есть ли методы для обработки конкретных типов медиа
         $mediaHandlers = [
-            'handlePhoto', 'handleVideo', 'handleDocument', 
-            'handleSticker', 'handleVoice', 'handleAnimation',
-            'handleVideoNote', 'handleContact', 'handleLocation'
+            // Медиа контент
+            'handlePhoto', 'handleVideo', 'handleAudio', 'handleDocument', 
+            'handleSticker', 'handleVoice', 'handleAnimation', 'handleVideoNote',
+            
+            // Контактная информация
+            'handleContact', 'handleLocation', 'handleVenue',
+            
+            // Интерактивный контент  
+            'handlePoll', 'handleDice', 'handleGame', 'handleStory',
+            
+            // Платежи
+            'handleInvoice', 'handleSuccessfulPayment',
+            
+            // Видеочаты
+            'handleVideoChatStarted', 'handleVideoChatEnded', 
+            'handleVideoChatParticipantsInvited', 'handleVideoChatScheduled',
+            
+            // Системные сообщения
+            'handleNewChatMembers', 'handleLeftChatMember', 'handleNewChatTitle',
+            'handleNewChatPhoto', 'handleDeleteChatPhoto', 'handlePinnedMessage',
+            
+            // Форумы
+            'handleForumTopicCreated', 'handleForumTopicEdited', 'handleForumTopicClosed',
+            'handleForumTopicReopened', 'handleGeneralForumTopicHidden', 'handleGeneralForumTopicUnhidden',
+            
+            // Sharing
+            'handleUserShared', 'handleChatShared',
+            
+            // Конкурсы
+            'handleGiveaway', 'handleGiveawayWinners', 'handleGiveawayCompleted',
+            
+            // Буст и фоны
+            'handleBoostAdded', 'handleChatBackgroundSet',
+            
+            // Веб-приложения и данные
+            'handleWebAppData', 'handlePassportData', 'handleProximityAlertTriggered'
         ];
 
         foreach ($mediaHandlers as $handler) {
@@ -577,6 +727,63 @@ class LightBot extends Skeleton
     {
         $this->allowTextMessages = false;
         return $this;
+    }
+
+    /**
+     * Регистрирует обработчик для конкретного типа медиа
+     * 
+     * @param MediaType $mediaType Тип медиа (photo, video, document, sticker, voice, etc.)
+     * @param callable $callback Функция-обработчик
+     * @return mixed
+     */
+    public function media(MediaType $mediaType, callable $callback)
+    {
+        // Автоматически регистрируем этот тип медиа
+        $this->registeredMediaTypes[] = $mediaType;
+        
+        $currentMediaType = $this->getMessageType();
+        
+        if ($currentMediaType === $mediaType) {
+            $this->messageProcessed = true;
+            if ($callback instanceof \Closure) {
+                $callback = $callback->bindTo($this, $this);
+            }
+            return $callback();
+        }
+        
+        return null;
+    }
+
+    /**
+     * Регистрирует fallback обработчик для необработанных сообщений
+     * 
+     * @param callable $callback Функция-обработчик
+     * @return static
+     */
+    public function fail(callable $callback): static
+    {
+        $this->failCallback = $callback;
+        return $this;
+    }
+
+    /**
+     * Регистрирует обработчик для обычных текстовых сообщений (не команд)
+     * 
+     * @param callable $callback Функция-обработчик
+     * @return mixed
+     */
+    public function text(callable $callback)
+    {
+        // Только если это текстовое сообщение и не команда
+        if ($this->hasMessageText() && !$this->isMessageCommand()) {
+            $this->messageProcessed = true;
+            if ($callback instanceof \Closure) {
+                $callback = $callback->bindTo($this, $this);
+            }
+            return $callback($this->getMessageText);
+        }
+        
+        return null;
     }
 
     /**
