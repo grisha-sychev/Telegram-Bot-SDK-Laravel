@@ -26,6 +26,18 @@ class LightBot extends Skeleton
     // Новые свойства для middleware
     protected array $middleware = [];
     protected array $globalMiddleware = [];
+    
+    /**
+     * Разрешить обработку медиафайлов без текста
+     * @var bool
+     */
+    protected bool $allowMedia = false;
+    
+    /**
+     * Разрешить обработку обычных текстовых сообщений (не команд)
+     * @var bool
+     */
+    protected bool $allowTextMessages = false;
 
     public function __construct()
     {
@@ -412,7 +424,7 @@ class LightBot extends Skeleton
     }
 
     /**
-     * Безопасное выполнение основного метода с обработкой ошибок
+     * Умная версия safeMain с настраиваемой логикой игнорирования
      */
     public function safeMain(): void
     {
@@ -424,13 +436,13 @@ class LightBot extends Skeleton
 
             // Запускаем через middleware конвейер
             $this->runThroughMiddleware(request()->all(), function ($update) {
-                // Игнорируем медиа без текста
-                if ($this->hasMediaWithoutText()) {
+                // Проверяем нужно ли игнорировать медиа
+                if ($this->hasMediaWithoutText() && $this->shouldIgnoreMedia()) {
                     return;
                 }
 
-                // Игнорируем текст который не является командой (если нет callback)
-                if (!$this->getCallback && $this->hasMessageText() && !$this->isMessageCommand()) {
+                // Проверяем нужно ли игнорировать текстовые сообщения
+                if (!$this->getCallback && $this->hasMessageText() && !$this->isMessageCommand() && $this->shouldIgnoreTextMessage()) {
                     return;
                 }
 
@@ -452,18 +464,119 @@ class LightBot extends Skeleton
     }
 
     /**
-     * Логирование ошибок
+     * Логирование с указанием конкретного бота
      */
     private function logError(\Exception $e): void
     {
         \Log::error('Telegram Bot Error', [
-            'bot' => $this->bot ?? 'unknown',
+            'bot' => $this->bot ?? class_basename(static::class),
             'user_id' => $this->getUserId ?? 'unknown',
             'message' => $e->getMessage(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString(),
         ]);
+    }
+
+    /**
+     * Определяет нужно ли игнорировать медиафайлы без текста
+     * Боты могут переопределить этот метод для кастомной логики
+     * 
+     * @return bool true если нужно игнорировать, false если обрабатывать
+     */
+    protected function shouldIgnoreMedia(): bool
+    {
+        // Если медиа разрешены - не игнорируем
+        if ($this->allowMedia) {
+            return false;
+        }
+
+        // Проверяем есть ли методы для обработки конкретных типов медиа
+        $mediaHandlers = [
+            'handlePhoto', 'handleVideo', 'handleDocument', 
+            'handleSticker', 'handleVoice', 'handleAnimation',
+            'handleVideoNote', 'handleContact', 'handleLocation'
+        ];
+
+        foreach ($mediaHandlers as $handler) {
+            if (method_exists($this, $handler)) {
+                return false; // Есть обработчик - не игнорируем
+            }
+        }
+
+        // Проверяем универсальный обработчик медиа
+        if (method_exists($this, 'handleMedia')) {
+            return false;
+        }
+
+        // По умолчанию игнорируем медиа
+        return true;
+    }
+
+    /**
+     * Определяет нужно ли игнорировать текстовые сообщения (не команды)
+     * Боты могут переопределить этот метод для кастомной логики
+     * 
+     * @return bool true если нужно игнорировать, false если обрабатывать
+     */
+    protected function shouldIgnoreTextMessage(): bool
+    {
+        // Если текстовые сообщения разрешены - не игнорируем
+        if ($this->allowTextMessages) {
+            return false;
+        }
+
+        // Проверяем есть ли обработчик текстовых сообщений
+        if (method_exists($this, 'handleTextMessage')) {
+            return false;
+        }
+
+        // По умолчанию игнорируем обычные текстовые сообщения
+        return true;
+    }
+
+    /**
+     * Включает обработку медиафайлов
+     * 
+     * @return static
+     */
+    public function enableMedia(): static
+    {
+        $this->allowMedia = true;
+        return $this;
+    }
+
+    /**
+     * Включает обработку текстовых сообщений
+     * 
+     * @return static
+     */
+    public function enableTextMessages(): static
+    {
+        $this->allowTextMessages = true;
+        return $this;
+    }
+
+    /**
+     * Отключает обработку медиафайлов
+     * 
+     * @return static
+     */
+    public function disableMedia(): static
+    {
+        $this->allowMedia = false;
+        return $this;
+    }
+
+    /**
+     * Отключает обработку текстовых сообщений
+     * 
+     * @return static
+     */
+    public function disableTextMessages(): static
+    {
+        $this->allowTextMessages = false;
+        return $this;
     }
 
     /**
@@ -1323,4 +1436,6 @@ class LightBot extends Skeleton
     // {
     //     return $this->sendInvoiceOut($this->getUserId(), $title, $description, $payload, $provider_token, $currency, $prices, $max_tip_amount, $suggested_tip_amounts, $start_parameter, $provider_data, $photo_url, $photo_size, $photo_width, $photo_height, $need_name, $need_phone_number, $need_email, $need_shipping_address, $send_phone_number_to_provider, $send_email_to_provider, $is_flexible, $disable_notification, $protect_content, $message_effect_id, $reply_parameters, $reply_markup);
     // }
+
+
 }
