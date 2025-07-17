@@ -66,12 +66,23 @@ php artisan migrate
 ### 2️⃣ Создание первого бота
 
 ```bash
+<<<<<<< HEAD
 # Создание бота через CLI
 php artisan teg:bot:create MyShopBot --type=ecommerce
+=======
+php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
+```
+### 3. Миграция
+
+```bash
+php artisan migrate
+```
+>>>>>>> 44e95f6f203b9b12453cb826d2bf39d6ea1e8872
 
 # Настройка токена
 php artisan teg:bot:token MyShopBot your_bot_token_here
 
+<<<<<<< HEAD
 # Настройка webhook
 php artisan teg:webhook:set MyShopBot
 ```
@@ -79,6 +90,9 @@ php artisan teg:webhook:set MyShopBot
 
 ```bash
 # Создание бота интерактивным вариантом
+=======
+```bash
+>>>>>>> 44e95f6f203b9b12453cb826d2bf39d6ea1e8872
 php artisan teg:set
 ```
 
