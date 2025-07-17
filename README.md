@@ -228,15 +228,15 @@ php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider" --fo
 
 ### 🛒 E-commerce бот
 Полнофункциональный интернет-магазин с каталогом, корзиной и заказами
-- [Просмотреть код](examples.md#e-commerce-бот)
+- [Просмотреть код](docs/examples.md#e-commerce-бот)
 
 ### 📰 Новостной бот  
 Система подписок и рассылки новостей
-- [Просмотреть код](examples.md#новостной-бот)
+- [Просмотреть код](docs/examples.md#новостной-бот)
 
 ### 🎫 Служба поддержки
 Система тикетов и обработки обращений
-- [Просмотреть код](examples.md#служба-поддержки)
+- [Просмотреть код](docs/examples.md#служба-поддержки)
 
 ## 🤝 Поддержка и сообщество
 
@@ -244,7 +244,7 @@ php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider" --fo
 
 - **Email**: support@tegbot.ru
 - **Telegram**: [@tegbot_support](https://t.me/tegbot_support)
-- **GitHub**: [Issues](https://github.com/tegbot/tegbot/issues)
+- **GitHub**: [Issues](https://github.com/grisha-sychev/Telegram-Bot-SDK-Laravel/issues)
 
 ### 📖 Дополнительные ресурсы
 
