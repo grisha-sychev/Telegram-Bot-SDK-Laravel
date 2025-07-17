@@ -302,7 +302,13 @@ class {$className} extends AbstractBot
         ]);
 
         \$this->registerCommand('help', function () {
-            \$this->sendSelf('📋 Доступные команды:\\n/start - Запуск бота\\n/help - Помощь');
+            \$this->sendSelf([
+                '📋 Доступные команды:', 
+                '', 
+                '/start - Запуск бота', 
+                '/help - Помощь'
+                ]
+            );
         }, [
             'description' => 'Помощь'
         ]);
