@@ -59,10 +59,15 @@ composer require tegbot/tegbot
 ```bash
 php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
 ```
+### 3. Миграция
+
+```bash
+php artisan migrate
+```
 
 ### 3. Создание бота
 
-```
+```bash
 php artisan teg:set
 ```
 
