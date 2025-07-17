@@ -1,24 +1,15 @@
-# ⚙️ Конфигурация TegBot v2.0
+# ⚙️ Конфигурация TegBot
 
 ## Обзор
 
-TegBot v2.0 использует новую мультиботную архитектуру с гибкой системой конфигурации:
+TegBot предоставляет гибкую систему конфигурации для настройки всех аспектов работы бота:
 
-- 🤖 **Мультибот управление**: Конфигурация отдельных ботов через базу данных
-- ⚙️ **Глобальные настройки**: Общие параметры системы в файлах конфигурации
-- 🛡️ **Безопасность**: Многоуровневая защита и ограничения
-- 📊 **Мониторинг**: Диагностика и метрики для каждого бота
+- 🔧 **Основные настройки**: Токен, webhook, базовые параметры
+- 🛡️ **Безопасность**: Защита, аутентификация, ограничения
+- 📁 **Файлы**: Загрузка, хранение, обработка медиа
+- 📊 **Логирование**: Детальная настройка логов
 - 🚀 **Производительность**: Кэширование, очереди, оптимизация
-- 🔧 **Управление**: Команды artisan для всех настроек
-
-## Новая архитектура конфигурации
-
-### ⚠️ Важные изменения в v2.0:
-
-1. **Токены ботов** - хранятся в базе данных, НЕ в .env
-2. **Настройки ботов** - индивидуальные для каждого бота
-3. **Глобальные настройки** - общие для всей системы
-4. **Команды управления** - все через artisan команды
+- 📱 **API**: Настройки взаимодействия с Telegram
 
 ## Основной файл конфигурации
 
@@ -30,30 +21,16 @@ TegBot v2.0 использует новую мультиботную архит�
 return [
     /*
     |--------------------------------------------------------------------------
-    | TegBot v2.0 - Мультиботная система
+    | Основные настройки бота
     |--------------------------------------------------------------------------
     */
-    
-    /**
-     * Мультибот настройки
-     */
-    'multibot' => [
-        'enabled' => env('TEGBOT_MULTIBOT_ENABLED', true),
-        'auto_create_classes' => env('TEGBOT_AUTO_CREATE_CLASSES', true),
-        'bots_path' => env('TEGBOT_BOTS_PATH', 'App\\Bots'),
-        'max_bots' => env('TEGBOT_MAX_BOTS', 100),
-        'auto_enable' => env('TEGBOT_AUTO_ENABLE_BOTS', true),
-    ],
-
-    /**
-     * Глобальные настройки системы
-     */
+    'token' => env('TEGBOT_TOKEN'),
     'debug' => env('TEGBOT_DEBUG', false),
-    'timezone' => env('TEGBOT_TIMEZONE', config('app.timezone', 'UTC')),
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------
-    | API настройки (для всех ботов)
+    | API настройки
     |--------------------------------------------------------------------------
     */
     'api' => [
@@ -62,23 +39,24 @@ return [
         'retries' => env('TEGBOT_API_RETRIES', 3),
         'retry_delay' => env('TEGBOT_API_RETRY_DELAY', 1),
         'rate_limit_delay' => env('TEGBOT_API_RATE_LIMIT_DELAY', 5),
-        'user_agent' => env('TEGBOT_USER_AGENT', 'TegBot/2.0 Laravel Bot Framework'),
+        'user_agent' => env('TEGBOT_USER_AGENT', 'TegBot/2.0'),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Безопасность (глобальная)
+    | Безопасность
     |--------------------------------------------------------------------------
     */
     'security' => [
         'webhook_secret' => env('TEGBOT_WEBHOOK_SECRET'),
-        'auto_generate_webhook_secret' => env('TEGBOT_AUTO_GENERATE_WEBHOOK_SECRET', true),
+        'admin_ids' => array_filter(explode(',', env('TEGBOT_ADMIN_IDS', ''))),
         'allowed_ips' => array_filter(explode(',', env('TEGBOT_ALLOWED_IPS', ''))),
         
         'spam_protection' => [
             'enabled' => env('TEGBOT_SPAM_PROTECTION', true),
             'max_messages_per_minute' => env('TEGBOT_SPAM_LIMIT', 20),
             'ban_duration_minutes' => env('TEGBOT_SPAM_BAN_DURATION', 60),
+            'whitelist_admins' => true,
         ],
         
         'rate_limits' => [
@@ -93,18 +71,6 @@ return [
             'block_html' => env('TEGBOT_BLOCK_HTML', true),
             'filter_sql_injection' => env('TEGBOT_FILTER_SQL', true),
         ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Webhook настройки
-    |--------------------------------------------------------------------------
-    */
-    'webhook' => [
-        'base_url' => env('TEGBOT_WEBHOOK_BASE_URL', config('app.url')),
-        'path_prefix' => env('TEGBOT_WEBHOOK_PATH', '/webhook'),
-        'auto_setup' => env('TEGBOT_AUTO_SETUP_WEBHOOKS', false),
-        'ssl_verify' => env('TEGBOT_WEBHOOK_SSL_VERIFY', true),
     ],
 
     /*
@@ -136,18 +102,14 @@ return [
     'logging' => [
         'enabled' => env('TEGBOT_LOGGING', true),
         'level' => env('TEGBOT_LOG_LEVEL', 'info'),
-        'multibot_logs' => env('TEGBOT_LOG_MULTIBOT', true),
-        'store_commands_history' => env('TEGBOT_STORE_COMMANDS_HISTORY', true),
-        
         'channels' => [
             'default' => env('TEGBOT_LOG_CHANNEL', 'stack'),
             'errors' => env('TEGBOT_ERROR_CHANNEL', 'daily'),
             'activity' => env('TEGBOT_ACTIVITY_CHANNEL', 'tegbot_activity'),
             'security' => env('TEGBOT_SECURITY_CHANNEL', 'tegbot_security'),
         ],
-        
-        'retention_days' => env('TEGBOT_LOG_RETENTION', 30),
         'max_entries' => env('TEGBOT_LOG_MAX_ENTRIES', 10000),
+        'retention_days' => env('TEGBOT_LOG_RETENTION', 30),
         'structured_logs' => env('TEGBOT_STRUCTURED_LOGS', true),
         'sensitive_fields' => ['password', 'token', 'secret', 'key'],
     ],
@@ -162,13 +124,6 @@ return [
         'driver' => env('TEGBOT_CACHE_DRIVER', 'redis'),
         'prefix' => env('TEGBOT_CACHE_PREFIX', 'tegbot'),
         'ttl' => env('TEGBOT_CACHE_TTL', 3600),
-        
-        // Кэширование информации о ботах
-        'bot_info' => [
-            'enabled' => env('TEGBOT_CACHE_BOT_INFO', true),
-            'ttl' => env('TEGBOT_CACHE_BOT_INFO_TTL', 3600),
-        ],
-        
         'user_data_ttl' => env('TEGBOT_USER_CACHE_TTL', 1800),
         'command_cache_ttl' => env('TEGBOT_COMMAND_CACHE_TTL', 300),
     ],
@@ -188,7 +143,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Мониторинг (для всех ботов)
+    | Мониторинг
     |--------------------------------------------------------------------------
     */
     'monitoring' => [
@@ -196,7 +151,6 @@ return [
             'enabled' => env('TEGBOT_HEALTH_CHECKS', true),
             'interval_minutes' => env('TEGBOT_HEALTH_INTERVAL', 5),
             'timeout' => env('TEGBOT_HEALTH_TIMEOUT', 10),
-            'per_bot_checks' => env('TEGBOT_PER_BOT_HEALTH', true),
         ],
         
         'alerts' => [
@@ -217,7 +171,6 @@ return [
         
         'metrics' => [
             'enabled' => env('TEGBOT_METRICS', true),
-            'per_bot_metrics' => env('TEGBOT_METRICS_PER_BOT', true),
             'export_path' => env('TEGBOT_METRICS_PATH', '/metrics'),
             'prometheus_enabled' => env('TEGBOT_PROMETHEUS', false),
         ],
@@ -225,18 +178,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | База данных (мультибот)
+    | Интеграции
     |--------------------------------------------------------------------------
     */
-    'database' => [
-        'connection' => env('TEGBOT_DB_CONNECTION', config('database.default')),
-        'bots_table' => env('TEGBOT_BOTS_TABLE', 'tegbot_bots'),
-        'messages_table' => env('TEGBOT_MESSAGES_TABLE', 'messages'),
-        'users_table' => env('TEGBOT_USERS_TABLE', 'users'),
+    'integrations' => [
+        'database' => [
+            'enabled' => env('TEGBOT_DATABASE', true),
+            'connection' => env('TEGBOT_DB_CONNECTION', 'mysql'),
+            'user_tracking' => env('TEGBOT_USER_TRACKING', true),
+            'message_storage' => env('TEGBOT_MESSAGE_STORAGE', false),
+        ],
         
-        'user_tracking' => env('TEGBOT_USER_TRACKING', true),
-        'message_storage' => env('TEGBOT_MESSAGE_STORAGE', false),
-        'command_history' => env('TEGBOT_COMMAND_HISTORY', true),
+        'redis' => [
+            'enabled' => env('TEGBOT_REDIS', true),
+            'connection' => env('TEGBOT_REDIS_CONNECTION', 'default'),
+        ],
+        
+        'elasticsearch' => [
+            'enabled' => env('TEGBOT_ELASTICSEARCH', false),
+            'host' => env('TEGBOT_ES_HOST', 'localhost:9200'),
+            'index' => env('TEGBOT_ES_INDEX', 'tegbot-logs'),
+        ],
     ],
 
     /*
@@ -267,72 +229,49 @@ return [
 
 ## Переменные окружения
 
-### Основной .env файл (без токенов!)
+### Основной .env файл
 
 ```env
-# ==========================================
-# TegBot v2.0 - Мультиботная конфигурация
-# ==========================================
-
-# Мультибот настройки
-TEGBOT_MULTIBOT_ENABLED=true
-TEGBOT_AUTO_CREATE_CLASSES=true
-TEGBOT_MAX_BOTS=100
-TEGBOT_AUTO_ENABLE_BOTS=true
-
-# Глобальные настройки
-TEGBOT_DEBUG=false
+# Основные настройки TegBot
+TEGBOT_TOKEN=your_bot_token_here
 TEGBOT_WEBHOOK_SECRET=your_random_secret_32_chars
+TEGBOT_DEBUG=false
 
-# Webhook настройки
-TEGBOT_WEBHOOK_BASE_URL=https://yourdomain.com
-TEGBOT_AUTO_GENERATE_WEBHOOK_SECRET=true
-TEGBOT_AUTO_SETUP_WEBHOOKS=false
+# Администраторы
+TEGBOT_ADMIN_IDS=123456789,987654321
 
-# API настройки (для всех ботов)
+# API настройки
 TEGBOT_API_TIMEOUT=30
 TEGBOT_API_RETRIES=3
-TEGBOT_API_RETRY_DELAY=1
 
-# Безопасность (глобальная)
+# Безопасность
 TEGBOT_SPAM_PROTECTION=true
 TEGBOT_SPAM_LIMIT=20
 TEGBOT_RATE_LIMIT_USER=20
-TEGBOT_RATE_LIMIT_GLOBAL=100
 
-# Файлы и медиа
+# Файлы
 TEGBOT_MAX_FILE_SIZE=20971520
 TEGBOT_DOWNLOAD_PATH=/storage/app/tegbot/downloads
-TEGBOT_AUTO_CLEANUP=true
-TEGBOT_CLEANUP_HOURS=24
 
 # Логирование
 TEGBOT_LOGGING=true
 TEGBOT_LOG_LEVEL=info
-TEGBOT_LOG_MULTIBOT=true
-TEGBOT_STORE_COMMANDS_HISTORY=true
 TEGBOT_LOG_RETENTION=30
 
 # Кэширование
 TEGBOT_CACHE=true
 TEGBOT_CACHE_DRIVER=redis
 TEGBOT_CACHE_TTL=3600
-TEGBOT_CACHE_BOT_INFO=true
-TEGBOT_CACHE_BOT_INFO_TTL=3600
 
 # Мониторинг
 TEGBOT_HEALTH_CHECKS=true
-TEGBOT_PER_BOT_HEALTH=true
 TEGBOT_ALERTS=true
-TEGBOT_METRICS_PER_BOT=true
+TEGBOT_ALERT_EMAIL=admin@example.com
 
-# База данных
-TEGBOT_USER_TRACKING=true
-TEGBOT_MESSAGE_STORAGE=false
-TEGBOT_COMMAND_HISTORY=true
+# Интеграции
+TEGBOT_DATABASE=true
+TEGBOT_REDIS=true
 ```
-
-⚠️ **ВАЖНО:** Токены ботов больше НЕ хранятся в .env! Они управляются через команды artisan.
 
 ### Переменные для разработки
 
@@ -340,15 +279,13 @@ TEGBOT_COMMAND_HISTORY=true
 # Development настройки
 TEGBOT_DEBUG=true
 TEGBOT_LOG_LEVEL=debug
-TEGBOT_LOG_MULTIBOT=true
 TEGBOT_CACHE=false
 TEGBOT_QUEUE=false
 TEGBOT_ALERTS=false
 
 # Отладка
 TEGBOT_VERBOSE_LOGGING=true
-TEGBOT_SPAM_PROTECTION=false
-TEGBOT_AUTO_SETUP_WEBHOOKS=true
+TEGBOT_DEBUG_TO_ADMINS=true
 ```
 
 ### Переменные для продакшена
@@ -365,351 +302,412 @@ TEGBOT_ALERTS=true
 TEGBOT_SPAM_PROTECTION=true
 TEGBOT_FILTER_SQL=true
 TEGBOT_BLOCK_HTML=true
-TEGBOT_AUTO_SETUP_WEBHOOKS=false
 
 # Производительность
 TEGBOT_CACHE_DRIVER=redis
 TEGBOT_QUEUE_CONNECTION=redis
-TEGBOT_CACHE_BOT_INFO=true
 ```
 
-## Управление конфигурацией через команды
+## Настройки по окружениям
 
-### Команды для работы с конфигурацией
+### config/tegbot/development.php
 
-```bash
-# Просмотр всей конфигурации
-php artisan teg:config show
+```php
+<?php
 
-# Просмотр конкретного параметра
-php artisan teg:config get multibot.enabled
-
-# Установка параметра
-php artisan teg:config set multibot.max_bots 200
-
-# Сброс к значениям по умолчанию
-php artisan teg:config reset
-
-# Валидация конфигурации
-php artisan teg:config validate
-
-# Экспорт конфигурации
-php artisan teg:config export --format=json
+return [
+    'debug' => true,
+    
+    'api' => [
+        'timeout' => 10,
+        'retries' => 1,
+    ],
+    
+    'security' => [
+        'spam_protection' => [
+            'enabled' => false,
+        ],
+        'rate_limits' => [
+            'global' => 1000,
+            'per_user' => 100,
+        ],
+    ],
+    
+    'logging' => [
+        'level' => 'debug',
+        'retention_days' => 7,
+    ],
+    
+    'cache' => [
+        'enabled' => false,
+    ],
+    
+    'monitoring' => [
+        'alerts' => [
+            'enabled' => false,
+        ],
+    ],
+];
 ```
 
-### Конфигурация отдельных ботов
+### config/tegbot/production.php
 
-Каждый бот имеет свои настройки в базе данных:
+```php
+<?php
 
-```bash
-# Просмотр настроек бота
-php artisan teg:bot show myshop
-
-# Изменение настроек бота
-php artisan teg:bot config myshop --setting=rate_limit --value=30
-php artisan teg:bot config myshop --setting=language --value=en
-
-# Настройка администраторов бота
-php artisan teg:bot admin myshop --add=123456789
-php artisan teg:bot admin myshop --remove=987654321
+return [
+    'debug' => false,
+    
+    'api' => [
+        'timeout' => 30,
+        'retries' => 3,
+    ],
+    
+    'security' => [
+        'spam_protection' => [
+            'enabled' => true,
+            'max_messages_per_minute' => 10,
+        ],
+        'validation' => [
+            'max_message_length' => 2000,
+            'block_html' => true,
+            'filter_sql_injection' => true,
+        ],
+    ],
+    
+    'logging' => [
+        'level' => 'warning',
+        'retention_days' => 90,
+    ],
+    
+    'cache' => [
+        'enabled' => true,
+        'driver' => 'redis',
+        'ttl' => 7200,
+    ],
+    
+    'monitoring' => [
+        'alerts' => [
+            'enabled' => true,
+            'thresholds' => [
+                'error_rate' => 3,
+                'response_time' => 1500,
+            ],
+        ],
+    ],
+];
 ```
 
-## База данных ботов
+## Динамическая конфигурация
 
-### Структура таблицы tegbot_bots
+### Конфигурация из базы данных
 
-```sql
-CREATE TABLE tegbot_bots (
-    id BIGINT PRIMARY KEY,
-    name VARCHAR(255) UNIQUE,           -- Имя бота (shop, news, support)
-    token VARCHAR(255) UNIQUE,          -- Токен от BotFather  
-    username VARCHAR(255),              -- Username бота (@shopbot)
-    first_name VARCHAR(255),            -- Имя бота
-    description TEXT,                   -- Описание бота
-    bot_id BIGINT UNIQUE,              -- ID бота в Telegram
-    enabled BOOLEAN DEFAULT TRUE,       -- Активен ли бот
-    webhook_url VARCHAR(255),           -- URL webhook
-    webhook_secret VARCHAR(255),        -- Секрет webhook (индивидуальный)
-    settings JSON,                      -- Дополнительные настройки бота
-    admin_ids JSON,                     -- ID администраторов бота
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
-);
-```
-
-### Пример настроек бота в JSON
-
-```json
+```php
+// app/Providers/TegBotConfigProvider.php
+class TegBotConfigProvider extends ServiceProvider
 {
-    "language": "ru",
-    "timezone": "Europe/Moscow",
-    "features": ["payments", "inline_queries"],
-    "rate_limit": 30,
-    "spam_protection": {
-        "enabled": true,
-        "max_messages": 15
-    },
-    "auto_responses": true,
-    "debug_mode": false,
-    "custom_commands": {
-        "welcome_message": "Добро пожаловать в наш магазин!",
-        "help_text": "Доступные команды: /start, /catalog, /help"
+    public function boot()
+    {
+        $this->loadDatabaseConfig();
+    }
+    
+    private function loadDatabaseConfig()
+    {
+        try {
+            $settings = DB::table('tegbot_settings')->pluck('value', 'key');
+            
+            foreach ($settings as $key => $value) {
+                config(["tegbot.{$key}" => $this->parseValue($value)]);
+            }
+        } catch (Exception $e) {
+            // База данных недоступна, используем значения по умолчанию
+            Log::warning('TegBot: Could not load database config', ['error' => $e->getMessage()]);
+        }
+    }
+    
+    private function parseValue($value)
+    {
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+        
+        if (in_array(strtolower($value), ['true', 'false'])) {
+            return strtolower($value) === 'true';
+        }
+        
+        if (str_contains($value, ',')) {
+            return explode(',', $value);
+        }
+        
+        return $value;
     }
 }
 ```
 
-## Конфигурация по типам ботов
+### Управление конфигурацией через команды
 
-### E-commerce бот
+```php
+// Просмотр текущей конфигурации
+php artisan teg:config
 
-```bash
-# Создание бота с расширенными настройками
-php artisan teg:set
+// Установка значения
+php artisan teg:config:set spam_protection.max_messages_per_minute 15
 
-# После создания настройка специфичных параметров
-php artisan teg:bot config shop --setting=rate_limit --value=50
-php artisan teg:bot config shop --setting=features --value='["payments","inline_queries","webhooks"]'
-php artisan teg:bot config shop --setting=language --value=ru
-php artisan teg:bot config shop --setting=timezone --value="Europe/Moscow"
-```
+// Получение значения
+php artisan teg:config:get api.timeout
 
-```json
-// Настройки в базе данных для e-commerce бота
-{
-    "language": "ru",
-    "timezone": "Europe/Moscow", 
-    "features": ["payments", "inline_queries", "webhooks"],
-    "rate_limit": 50,
-    "max_file_size": 52428800,
-    "allowed_file_types": ["jpg", "jpeg", "png", "pdf"],
-    "payment_provider": "sberbank",
-    "currency": "RUB",
-    "auto_responses": true,
-    "catalog_mode": "inline",
-    "order_notifications": true
-}
-```
+// Сброс к значениям по умолчанию
+php artisan teg:config:reset
 
-### Новостной бот
-
-```bash
-# Настройка новостного бота
-php artisan teg:bot config news --setting=broadcast_mode --value=true
-php artisan teg:bot config news --setting=max_subscribers --value=10000
-php artisan teg:bot config news --setting=post_interval --value=300
-```
-
-```json
-{
-    "language": "ru",
-    "broadcast_mode": true,
-    "max_subscribers": 10000,
-    "post_interval": 300,
-    "auto_post": true,
-    "categories": ["tech", "business", "sport"],
-    "moderation": true,
-    "analytics": true
-}
-```
-
-### Служба поддержки
-
-```bash
-# Настройка бота поддержки
-php artisan teg:bot config support --setting=ticket_system --value=true
-php artisan teg:bot config support --setting=auto_assignment --value=true
-php artisan teg:bot config support --setting=working_hours --value='{"start":"09:00","end":"18:00"}'
-```
-
-```json
-{
-    "language": "ru",
-    "ticket_system": true,
-    "auto_assignment": true,
-    "working_hours": {
-        "start": "09:00",
-        "end": "18:00",
-        "timezone": "Europe/Moscow",
-        "days": ["mon", "tue", "wed", "thu", "fri"]
-    },
-    "queue_system": true,
-    "priority_levels": ["low", "normal", "high", "urgent"],
-    "auto_responses": {
-        "greeting": true,
-        "working_hours": true,
-        "queue_position": true
-    }
-}
+// Экспорт конфигурации
+php artisan teg:config:export --format=json
 ```
 
 ## Валидация конфигурации
 
-### Автоматическая проверка
+### Проверка настроек
 
-```bash
-# Полная проверка конфигурации
-php artisan teg:config validate
+```php
+class ConfigValidator
+{
+    public function validate(): array
+    {
+        $errors = [];
+        
+        // Проверка обязательных параметров
+        if (!config('tegbot.token')) {
+            $errors[] = 'TEGBOT_TOKEN не установлен';
+        }
+        
+        // Проверка формата токена
+        if (!$this->isValidToken(config('tegbot.token'))) {
+            $errors[] = 'Неверный формат токена бота';
+        }
+        
+        // Проверка webhook secret
+        if (!config('tegbot.security.webhook_secret')) {
+            $errors[] = 'TEGBOT_WEBHOOK_SECRET не установлен (критично для безопасности)';
+        }
+        
+        // Проверка админских ID
+        $adminIds = config('tegbot.security.admin_ids');
+        if (empty($adminIds)) {
+            $errors[] = 'TEGBOT_ADMIN_IDS не указаны';
+        } else {
+            foreach ($adminIds as $id) {
+                if (!is_numeric($id)) {
+                    $errors[] = "Неверный формат admin ID: {$id}";
+                }
+            }
+        }
+        
+        // Проверка путей
+        $downloadPath = config('tegbot.files.download_path');
+        if (!is_dir($downloadPath)) {
+            $errors[] = "Путь для загрузок не существует: {$downloadPath}";
+        } elseif (!is_writable($downloadPath)) {
+            $errors[] = "Путь для загрузок недоступен для записи: {$downloadPath}";
+        }
+        
+        // Проверка ограничений
+        $maxFileSize = config('tegbot.files.max_file_size');
+        if ($maxFileSize > 50 * 1024 * 1024) {
+            $errors[] = "Слишком большой лимит размера файла: " . $this->formatBytes($maxFileSize);
+        }
+        
+        return $errors;
+    }
+    
+    private function isValidToken(string $token): bool
+    {
+        return preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token);
+    }
+}
 
-# Проверка конкретного бота
-php artisan teg:bot validate myshop
-
-# Проверка всех ботов
-php artisan teg:bot validate --all
+// Команда для валидации
+php artisan teg:config:validate
 ```
 
-### Пример вывода валидации
+## Оптимизация конфигурации
 
-```
-⚙️  Валидация конфигурации TegBot
+### Кэширование конфигурации
 
-✅ Глобальная конфигурация:
-  ✅ Webhook secret установлен
-  ✅ Пути для файлов существуют и доступны для записи
-  ✅ Redis подключение работает
-  ✅ База данных доступна
-
-🤖 Проверка ботов:
-  ✅ shop (@shopbot): Конфигурация корректна
-  ✅ news (@newsbot): Конфигурация корректна  
-  ❌ support (@supportbot): Ошибки в настройках:
-    - Неверный формат working_hours
-    - Администраторы не указаны
-
-⚠️  Предупреждения:
-  - TEGBOT_CACHE_DRIVER=file рекомендуется Redis для продакшена
-  - TEGBOT_QUEUE=false рекомендуется включить для высокой нагрузки
-
-Проверено: 3 бота, найдено: 2 ошибки, 2 предупреждения
+```php
+// Команды для работы с кэшем конфигурации
+php artisan config:cache    # Кэширование всех конфигов
+php artisan teg:cache:config # Кэширование только TegBot конфигов
+php artisan config:clear    # Очистка кэша конфигов
 ```
 
-## Продакшен настройки
+### Конфигурация для высокой нагрузки
 
-### Оптимизация производительности
-
-```env
-# Высокая производительность
-TEGBOT_CACHE=true
-TEGBOT_CACHE_DRIVER=redis
-TEGBOT_CACHE_BOT_INFO=true
-TEGBOT_CACHE_BOT_INFO_TTL=7200
-
-# Очереди для масштабирования
-TEGBOT_QUEUE=true
-TEGBOT_QUEUE_CONNECTION=redis
-
-# Оптимизированное логирование
-TEGBOT_LOG_LEVEL=warning
-TEGBOT_STORE_COMMANDS_HISTORY=false
-TEGBOT_LOG_RETENTION=14
+```php
+// config/tegbot/high-load.php
+return [
+    'api' => [
+        'timeout' => 15,
+        'retries' => 5,
+        'retry_delay' => 2,
+    ],
+    
+    'cache' => [
+        'enabled' => true,
+        'driver' => 'redis',
+        'ttl' => 1800,
+        'user_data_ttl' => 900,
+    ],
+    
+    'queue' => [
+        'enabled' => true,
+        'connection' => 'redis',
+        'timeout' => 30,
+    ],
+    
+    'security' => [
+        'rate_limits' => [
+            'global' => 50,
+            'per_user' => 10,
+            'per_chat' => 25,
+        ],
+    ],
+    
+    'logging' => [
+        'level' => 'error',
+        'max_entries' => 5000,
+        'retention_days' => 14,
+    ],
+];
 ```
 
-### Безопасность продакшена
+## Примеры конфигураций
 
-```env
-# Строгая безопасность
-TEGBOT_DEBUG=false
-TEGBOT_SPAM_PROTECTION=true
-TEGBOT_RATE_LIMIT_GLOBAL=50
-TEGBOT_FILTER_SQL=true
-TEGBOT_BLOCK_HTML=true
+### E-commerce бот
 
-# Ограничение доступа
-TEGBOT_ALLOWED_IPS=149.154.160.0/20,91.108.4.0/22
-TEGBOT_AUTO_SETUP_WEBHOOKS=false
+```php
+return [
+    'security' => [
+        'spam_protection' => [
+            'max_messages_per_minute' => 30, // Больше для покупателей
+        ],
+        'rate_limits' => [
+            'per_user' => 50,
+            'commands' => 20,
+        ],
+    ],
+    
+    'files' => [
+        'max_file_size' => 50 * 1024 * 1024, // 50MB для каталогов
+        'allowed_types' => ['jpg', 'jpeg', 'png', 'pdf'],
+        'thumbnails' => [
+            'enabled' => true,
+            'quality' => 90,
+        ],
+    ],
+    
+    'integrations' => [
+        'database' => [
+            'user_tracking' => true,
+            'message_storage' => true, // Для истории заказов
+        ],
+    ],
+];
 ```
 
-### Мониторинг продакшена
+### Служебный бот
 
-```env
-# Полный мониторинг
-TEGBOT_HEALTH_CHECKS=true
-TEGBOT_PER_BOT_HEALTH=true
-TEGBOT_ALERTS=true
-TEGBOT_METRICS_PER_BOT=true
-
-# Настройки алертов
-TEGBOT_ALERT_EMAIL=admin@yourdomain.com
-TEGBOT_ALERT_ERROR_RATE=3
-TEGBOT_ALERT_RESPONSE_TIME=1500
+```php
+return [
+    'security' => [
+        'admin_ids' => [123456789], // Только один админ
+        'spam_protection' => [
+            'enabled' => false, // Отключено для служебных задач
+        ],
+        'allowed_ips' => ['192.168.1.100'], // Только с определенного IP
+    ],
+    
+    'api' => [
+        'timeout' => 60, // Больше времени для служебных операций
+        'retries' => 1,
+    ],
+    
+    'logging' => [
+        'level' => 'debug',
+        'retention_days' => 180, // Длительное хранение логов
+    ],
+];
 ```
 
-## Команды для управления
+### Развлекательный бот
 
-### Основные команды
-
-```bash
-# Глобальная конфигурация
-php artisan teg:config show                    # Показать всю конфигурацию
-php artisan teg:config get security.spam_protection   # Получить значение
-php artisan teg:config set cache.ttl 7200     # Установить значение
-
-# Конфигурация ботов
-php artisan teg:bot list                       # Список всех ботов
-php artisan teg:bot show myshop               # Настройки конкретного бота
-php artisan teg:bot config myshop --setting=language --value=en
-
-# Валидация
-php artisan teg:config validate              # Проверить глобальную конфигурацию
-php artisan teg:bot validate myshop          # Проверить конкретного бота
-php artisan teg:bot validate --all           # Проверить всех ботов
-
-# Импорт/экспорт
-php artisan teg:config export --format=json  # Экспорт в JSON
-php artisan teg:migrate export               # Резервная копия ботов
-php artisan teg:migrate import backup.json   # Восстановление ботов
+```php
+return [
+    'security' => [
+        'spam_protection' => [
+            'max_messages_per_minute' => 10, // Строже лимиты
+        ],
+        'rate_limits' => [
+            'per_user' => 15,
+            'commands' => 5,
+        ],
+    ],
+    
+    'files' => [
+        'allowed_types' => ['jpg', 'jpeg', 'png', 'gif', 'mp4'],
+        'max_file_size' => 25 * 1024 * 1024,
+        'auto_cleanup' => true,
+        'cleanup_hours' => 6, // Быстрая очистка
+    ],
+    
+    'experimental' => [
+        'ai_responses' => true,
+        'image_analysis' => true,
+    ],
+];
 ```
 
-### Автоматизация
+## Миграция конфигурации
 
-```bash
-# Cron для автоматической проверки
-# Каждые 15 минут проверяем конфигурацию
-*/15 * * * * cd /path/to/project && php artisan teg:config validate --quiet
+### Обновление с версии 1.x
 
-# Ежедневная проверка всех ботов
-0 2 * * * cd /path/to/project && php artisan teg:bot validate --all --fix
-
-# Еженедельная очистка логов
-0 3 * * 0 cd /path/to/project && php artisan teg:logs clean
+```php
+// app/Console/Commands/MigrateConfig.php
+class MigrateConfig extends Command
+{
+    protected $signature = 'teg:config:migrate {--from=1.0}';
+    
+    public function handle()
+    {
+        $fromVersion = $this->option('from');
+        
+        $this->info("Миграция конфигурации с версии {$fromVersion}");
+        
+        switch ($fromVersion) {
+            case '1.0':
+                $this->migrateFrom1x();
+                break;
+            default:
+                $this->error("Неподдерживаемая версия: {$fromVersion}");
+        }
+    }
+    
+    private function migrateFrom1x()
+    {
+        $oldConfig = config('telegram');
+        
+        if ($oldConfig) {
+            $newConfig = [
+                'TEGBOT_TOKEN' => $oldConfig['token'] ?? '',
+                'TEGBOT_ADMIN_IDS' => implode(',', $oldConfig['admins'] ?? []),
+                'TEGBOT_WEBHOOK_SECRET' => Str::random(32),
+            ];
+            
+            $this->writeEnvFile($newConfig);
+            $this->info('Конфигурация успешно мигрирована');
+        }
+    }
+}
 ```
-
-## Миграция с TegBot v1.x
-
-⚠️ **ВНИМАНИЕ: Полная несовместимость с v1.x!**
-
-### Процесс миграции конфигурации
-
-```bash
-# 1. Сохраните старую конфигурацию
-cp config/telegram.php config/telegram.php.backup
-
-# 2. Обновите пакет
-composer update tegbot/tegbot
-
-# 3. Публикация новой конфигурации
-php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider" --force
-
-# 4. Запуск миграций базы данных
-php artisan migrate
-
-# 5. Перенос ботов в новую систему
-php artisan teg:migrate legacy --from=config/telegram.php.backup
-
-# 6. Проверка результата
-php artisan teg:config validate
-php artisan teg:bot list
-```
-
-### Что изменилось
-
-| v1.x | v2.0 |
-|------|------|
-| `TELEGRAM_TOKEN` | Токены в базе данных |
-| `config/telegram.php` | `config/tegbot.php` + БД |
-| Один бот | Множественные боты |
-| Статическая конфигурация | Динамическая через команды |
-| `/bot/{token}` | `/webhook/{botName}` |
 
 ---
 
-⚙️ **Конфигурация TegBot v2.0** - полная гибкость для мультиботной системы! 
+⚙️ **Конфигурация TegBot** - гибкость для любых сценариев использования! 

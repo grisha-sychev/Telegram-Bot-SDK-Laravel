@@ -1,1047 +1,660 @@
-# 🔧 Middleware TegBot v2.0
+# 🔄 Middleware система TegBot
 
-## Обзор системы Middleware
+## Обзор
 
-TegBot v2.0 представляет революционную систему middleware для мультиботных экосистем:
+Middleware в TegBot позволяет обрабатывать сообщения до их передачи основной логике бота:
 
-- 🎯 **Bot-Specific Middleware**: Индивидуальные обработчики для каждого бота
-- ⚡ **Pipeline Processing**: Последовательная обработка через цепочку middleware
-- 🔄 **Before/After Hooks**: Выполнение кода до и после обработки сообщений
-- 🛡️ **Security Middleware**: Встроенная защита и валидация
-- 📊 **Analytics Middleware**: Автоматический сбор метрик
-- 🎛️ **Conditional Middleware**: Динамическое применение по условиям
+- ⚡ **Pipeline обработка**: Последовательное выполнение middleware
+- 🛡️ **Безопасность**: Встроенные фильтры для защиты
+- 🎯 **Фильтрация**: Селективная обработка по типам сообщений
+- 📊 **Логирование**: Автоматическое отслеживание активности
+- 🔧 **Кастомизация**: Возможность создания собственных middleware
 
-> ⚠️ **Важно**: v2.0 полностью переработал систему middleware. Миграция с v1.x обязательна.
+## Типы middleware
 
-## 🏗️ Архитектура Middleware
+### Глобальные middleware
 
-### Pipeline обработки
-
-```mermaid
-graph TD
-    A[Incoming Message] --> B[Global Middleware]
-    B --> C[Bot-Specific Middleware]
-    C --> D[Security Middleware]
-    D --> E[Rate Limiting]
-    E --> F[Analytics Tracking]
-    F --> G[Message Processing]
-    G --> H[Response Middleware]
-    H --> I[Logging Middleware]
-    I --> J[Output]
-```
-
-### Типы Middleware
-
-1. **🌐 Global Middleware**
-   - Применяется ко всем ботам
-   - Базовая валидация и безопасность
-   - Общие метрики и логирование
-
-2. **🎯 Bot-Specific Middleware**
-   - Уникальные для каждого бота
-   - Специфическая бизнес-логика
-   - Индивидуальные настройки
-
-3. **🔐 Security Middleware**
-   - Проверка прав доступа
-   - Антиспам и rate limiting
-   - Валидация входных данных
-
-4. **📊 Analytics Middleware**
-   - Сбор метрик и статистики
-   - Трекинг пользователей
-   - Мониторинг производительности
-
-## 🎯 Создание Custom Middleware
-
-### Базовый Middleware
+Выполняются для всех сообщений:
 
 ```php
-<?php
-// app/TegBot/Middleware/CustomMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class CustomMiddleware
+public function main(): void
 {
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        // Логика ДО обработки сообщения
-        $this->beforeProcessing($bot);
-        
-        // Продолжаем выполнение pipeline
-        $response = $next($bot);
-        
-        // Логика ПОСЛЕ обработки сообщения
-        $this->afterProcessing($bot, $response);
-        
-        return $response;
-    }
+    // Применяем глобальные middleware
+    $this->globalMiddleware([
+        'spam_protection',    // защита от спама
+        'activity_logging',   // логирование активности  
+        'rate_limiting',      // ограничение частоты
+        'user_validation',    // валидация пользователей
+    ]);
     
-    private function beforeProcessing(LightBot $bot): void
-    {
-        // Ваша логика "до"
-        logger()->info('Processing message', [
-            'bot' => $bot->getBotName(),
-            'user_id' => $bot->getUserId,
-            'message_id' => $bot->getMessageId
-        ]);
-    }
-    
-    private function afterProcessing(LightBot $bot, $response): void
-    {
-        // Ваша логика "после"
-        logger()->info('Message processed', [
-            'bot' => $bot->getBotName(),
-            'response_time' => microtime(true) - LARAVEL_START
-        ]);
-    }
-}
-```
-
-### Условный Middleware
-
-```php
-<?php
-// app/TegBot/Middleware/ConditionalMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class ConditionalMiddleware
-{
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        // Применяем middleware только при определенных условиях
-        if ($this->shouldApply($bot)) {
-            $this->executeLogic($bot);
-        }
-        
-        return $next($bot);
-    }
-    
-    private function shouldApply(LightBot $bot): bool
-    {
-        // Условия применения
-        return $bot->isGroup() && 
-               $bot->hasText() && 
-               $bot->getUserRole() === 'admin';
-    }
-    
-    private function executeLogic(LightBot $bot): void
-    {
-        // Специфическая логика для админов в группах
-        $bot->logAdminAction($bot->getMessageText);
-    }
-}
-```
-
-### Параметризованный Middleware
-
-```php
-<?php
-// app/TegBot/Middleware/ParameterizedMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class ParameterizedMiddleware
-{
-    private string $permission;
-    private array $options;
-    
-    public function __construct(string $permission, array $options = [])
-    {
-        $this->permission = $permission;
-        $this->options = $options;
-    }
-    
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        if (!$this->checkPermission($bot)) {
-            $this->denyAccess($bot);
-            return false; // Прерываем выполнение
-        }
-        
-        return $next($bot);
-    }
-    
-    private function checkPermission(LightBot $bot): bool
-    {
-        return $bot->userHasPermission($this->permission);
-    }
-    
-    private function denyAccess(LightBot $bot): void
-    {
-        $message = $this->options['deny_message'] ?? 
-                   "❌ Недостаточно прав для выполнения действия";
-        
-        $bot->sendMessage($bot->getChatId, $message);
-    }
-}
-```
-
-## 🔗 Регистрация Middleware
-
-### Глобальный Middleware
-
-```php
-<?php
-// app/TegBot/Kernel.php
-namespace App\TegBot;
-
-class Kernel
-{
-    protected array $globalMiddleware = [
-        \App\TegBot\Middleware\SecurityMiddleware::class,
-        \App\TegBot\Middleware\RateLimitingMiddleware::class,
-        \App\TegBot\Middleware\AnalyticsMiddleware::class,
-        \App\TegBot\Middleware\LoggingMiddleware::class,
-    ];
-    
-    protected array $middlewareAliases = [
-        'auth' => \App\TegBot\Middleware\AuthMiddleware::class,
-        'admin' => \App\TegBot\Middleware\AdminMiddleware::class,
-        'throttle' => \App\TegBot\Middleware\ThrottleMiddleware::class,
-        'validate' => \App\TegBot\Middleware\ValidationMiddleware::class,
-    ];
-}
-```
-
-### Bot-Specific Middleware
-
-```php
-<?php
-// app/Bots/ShopBot.php
-namespace App\Bots;
-
-use Teg\LightBot;
-
-class ShopBot extends LightBot
-{
-    protected array $middleware = [
-        'auth',                    // Alias
-        'throttle:60,1',          // С параметрами
-        \App\TegBot\Middleware\ShopSecurityMiddleware::class,
-    ];
-    
-    protected array $middlewareGroups = [
-        'api' => [
-            'throttle:60,1',
-            'validate:strict',
-        ],
-        'admin' => [
-            'auth',
-            'admin',
-            \App\TegBot\Middleware\AuditMiddleware::class,
-        ],
-    ];
-    
-    public function main(): void
-    {
-        // Применяем middleware для конкретных действий
-        $this->middleware(['admin'])->when(function () {
-            return $this->isAdminCommand();
-        });
-        
-        $this->commands();
-        $this->handleMessage();
-    }
+    // Остальная логика бота
 }
 ```
 
 ### Middleware для команд
 
+Выполняются только для конкретных команд:
+
 ```php
-<?php
-// Применение middleware к отдельным командам
-class AdvancedBot extends LightBot
-{
-    public function commands(): void
-    {
-        // Middleware для одной команды
-        $this->registerCommand('admin_panel', function () {
-            $this->showAdminPanel();
-        }, [
-            'middleware' => ['auth', 'admin'],
-            'description' => 'Административная панель'
-        ]);
-        
-        // Middleware с параметрами
-        $this->registerCommand('upload', function ($args) {
-            $this->handleUpload($args);
-        }, [
-            'middleware' => [
-                'auth',
-                'throttle:5,60',  // 5 запросов в минуту
-                'validate:file'
-            ],
-            'description' => 'Загрузка файлов'
-        ]);
-        
-        // Условный middleware
-        $this->registerCommand('moderate', function ($args) {
-            $this->moderateContent($args);
-        }, [
-            'middleware' => function ($bot) {
-                return $bot->isGroup() ? ['auth', 'moderator'] : ['auth'];
-            },
-            'description' => 'Модерация контента'
-        ]);
-    }
-}
+$this->registerCommand('admin', $callback, [
+    'middleware' => [
+        'check_admin_rights',
+        'validate_admin_command',
+        function ($bot, $parsed) {
+            // Кастомная проверка
+            return $bot->isWorkingHours();
+        }
+    ],
+]);
 ```
 
-## 🛡️ Security Middleware
+## Встроенные middleware
 
-### Аутентификация
+### spam_protection
+
+Защита от спама и флуда:
 
 ```php
-<?php
-// app/TegBot/Middleware/AuthMiddleware.php
-namespace App\TegBot\Middleware;
+// Автоматическая настройка
+$this->globalMiddleware(['spam_protection']);
 
-use Teg\LightBot;
-use App\Models\UserPermission;
-
-class AuthMiddleware
-{
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $userId = $bot->getUserId;
-        $botName = $bot->getBotName();
-        
-        // Проверяем права пользователя
-        $permission = UserPermission::where('user_id', $userId)
-            ->where('bot_name', $botName)
-            ->where(function ($query) {
-                $query->whereNull('expires_at')
-                      ->orWhere('expires_at', '>', now());
-            })
-            ->first();
-        
-        if (!$permission) {
-            $this->unauthorizedResponse($bot);
-            return false;
-        }
-        
-        // Сохраняем права в контексте бота
-        $bot->setUserPermissions($permission->permissions);
-        
-        return $next($bot);
-    }
-    
-    private function unauthorizedResponse(LightBot $bot): void
-    {
-        $bot->sendMessage($bot->getChatId, 
-            "🔐 Для использования бота необходима авторизация.\n" .
-            "Обратитесь к администратору для получения доступа."
-        );
-    }
-}
+// Кастомные настройки
+$this->middleware('spam_protection', [
+    'max_messages_per_minute' => 20,
+    'ban_duration_minutes' => 60,
+    'whitelist_admins' => true,
+]);
 ```
 
-### Rate Limiting
+**Функции:**
+- Ограничение количества сообщений в минуту
+- Автоматическая блокировка нарушителей
+- Исключения для администраторов
+- Логирование попыток спама
+
+### activity_logging
+
+Логирование активности пользователей:
 
 ```php
-<?php
-// app/TegBot/Middleware/RateLimitingMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-use Illuminate\Support\Facades\Cache;
-
-class RateLimitingMiddleware
-{
-    private int $maxAttempts;
-    private int $decayMinutes;
-    
-    public function __construct(int $maxAttempts = 60, int $decayMinutes = 1)
-    {
-        $this->maxAttempts = $maxAttempts;
-        $this->decayMinutes = $decayMinutes;
-    }
-    
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $key = $this->resolveRequestSignature($bot);
-        $attempts = Cache::get($key, 0);
-        
-        if ($attempts >= $this->maxAttempts) {
-            $this->rateLimitExceeded($bot);
-            return false;
-        }
-        
-        Cache::put($key, $attempts + 1, now()->addMinutes($this->decayMinutes));
-        
-        return $next($bot);
-    }
-    
-    private function resolveRequestSignature(LightBot $bot): string
-    {
-        return 'rate_limit:' . $bot->getBotName() . ':' . $bot->getUserId;
-    }
-    
-    private function rateLimitExceeded(LightBot $bot): void
-    {
-        $bot->sendMessage($bot->getChatId, 
-            "⏱️ Слишком много запросов. Попробуйте позже."
-        );
-        
-        // Логируем превышение лимита
-        logger()->warning('Rate limit exceeded', [
-            'bot' => $bot->getBotName(),
-            'user_id' => $bot->getUserId,
-            'chat_id' => $bot->getChatId
-        ]);
-    }
-}
+$this->globalMiddleware(['activity_logging']);
 ```
 
-### Антиспам
+**Что логируется:**
+- Все входящие сообщения
+- Выполненные команды
+- Медиа файлы
+- Время и тип чата
+- IP-адрес (если доступен)
+
+### rate_limiting
+
+Ограничение частоты запросов:
 
 ```php
-<?php
-// app/TegBot/Middleware/AntiSpamMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-use Illuminate\Support\Facades\Cache;
-
-class AntiSpamMiddleware
-{
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        if (!$bot->hasText()) {
-            return $next($bot);
-        }
-        
-        $messageText = $bot->getMessageText;
-        $userId = $bot->getUserId;
-        
-        // Проверка на дублированные сообщения
-        if ($this->isDuplicateMessage($messageText, $userId)) {
-            $this->spamDetected($bot, 'duplicate_message');
-            return false;
-        }
-        
-        // Проверка на спам-слова
-        if ($this->containsSpam($messageText)) {
-            $this->spamDetected($bot, 'spam_words');
-            return false;
-        }
-        
-        // Проверка частоты сообщений
-        if ($this->isHighFrequency($userId)) {
-            $this->spamDetected($bot, 'high_frequency');
-            return false;
-        }
-        
-        return $next($bot);
-    }
-    
-    private function isDuplicateMessage(string $message, int $userId): bool
-    {
-        $hash = hash('sha256', $message);
-        $key = "message_hash:{$userId}:{$hash}";
-        
-        if (Cache::has($key)) {
-            return true;
-        }
-        
-        Cache::put($key, true, 300); // 5 минут
-        return false;
-    }
-    
-    private function containsSpam(string $message): bool
-    {
-        $spamWords = ['spam', 'scam', 'fake', 'фейк', 'развод'];
-        $message = mb_strtolower($message);
-        
-        foreach ($spamWords as $spamWord) {
-            if (str_contains($message, $spamWord)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    private function isHighFrequency(int $userId): bool
-    {
-        $key = "message_frequency:{$userId}";
-        $count = Cache::get($key, 0);
-        
-        if ($count > 10) { // Более 10 сообщений в минуту
-            return true;
-        }
-        
-        Cache::put($key, $count + 1, 60);
-        return false;
-    }
-    
-    private function spamDetected(LightBot $bot, string $reason): void
-    {
-        $bot->sendMessage($bot->getChatId, 
-            "🚫 Сообщение заблокировано системой антиспама"
-        );
-        
-        // Логируем обнаружение спама
-        logger()->warning('Spam detected', [
-            'bot' => $bot->getBotName(),
-            'user_id' => $bot->getUserId,
-            'reason' => $reason,
-            'message' => $bot->getMessageText ?? 'N/A'
-        ]);
-    }
-}
+$this->middleware('rate_limiting', [
+    'global_limit' => 100,      // глобальный лимит
+    'per_user_limit' => 20,     // лимит на пользователя
+    'per_chat_limit' => 50,     // лимит на чат
+    'window_minutes' => 1,      // окно времени
+]);
 ```
 
-## 📊 Analytics Middleware
+### user_validation
 
-### Трекинг пользователей
+Валидация пользователей:
 
 ```php
-<?php
-// app/TegBot/Middleware/UserTrackingMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-use App\Models\UserActivity;
-
-class UserTrackingMiddleware
-{
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $this->trackUserActivity($bot);
-        
-        $startTime = microtime(true);
-        $response = $next($bot);
-        $endTime = microtime(true);
-        
-        $this->trackResponseTime($bot, $endTime - $startTime);
-        
-        return $response;
-    }
-    
-    private function trackUserActivity(LightBot $bot): void
-    {
-        UserActivity::create([
-            'user_id' => $bot->getUserId,
-            'bot_name' => $bot->getBotName(),
-            'action' => $this->getActionType($bot),
-            'data' => $this->getActionData($bot),
-            'timestamp' => now()
-        ]);
-    }
-    
-    private function getActionType(LightBot $bot): string
-    {
-        if ($bot->hasCommand()) {
-            return 'command';
-        } elseif ($bot->hasCallbackQuery()) {
-            return 'callback';
-        } elseif ($bot->hasText()) {
-            return 'message';
-        } else {
-            return 'other';
-        }
-    }
-    
-    private function getActionData(LightBot $bot): array
-    {
-        return [
-            'command' => $bot->getCommand() ?? null,
-            'text' => mb_substr($bot->getMessageText ?? '', 0, 100),
-            'callback_data' => $bot->getCallbackData ?? null,
-            'chat_type' => $bot->getChatType(),
-            'message_id' => $bot->getMessageId
-        ];
-    }
-    
-    private function trackResponseTime(LightBot $bot, float $responseTime): void
-    {
-        if ($responseTime > 1.0) { // Логируем медленные ответы
-            logger()->warning('Slow response detected', [
-                'bot' => $bot->getBotName(),
-                'user_id' => $bot->getUserId,
-                'response_time' => $responseTime
-            ]);
-        }
-        
-        // Отправляем метрику в аналитику
-        $this->sendMetric('response_time', $responseTime, [
-            'bot' => $bot->getBotName(),
-            'action' => $this->getActionType($bot)
-        ]);
-    }
-}
+$this->middleware('user_validation', [
+    'require_username' => false,
+    'min_account_age_days' => 0,
+    'blocked_users' => [],
+    'allowed_users' => [], // если пустой, то все разрешены
+]);
 ```
 
-### Метрики производительности
+## Создание кастомных middleware
+
+### Функция middleware
 
 ```php
-<?php
-// app/TegBot/Middleware/PerformanceMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class PerformanceMiddleware
+private function myCustomMiddleware($bot, $parsed): bool
 {
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $metrics = [
-            'memory_start' => memory_get_usage(true),
-            'time_start' => microtime(true)
-        ];
-        
-        $response = $next($bot);
-        
-        $metrics['memory_end'] = memory_get_usage(true);
-        $metrics['time_end'] = microtime(true);
-        $metrics['memory_peak'] = memory_get_peak_usage(true);
-        
-        $this->recordMetrics($bot, $metrics);
-        
-        return $response;
+    // $bot - экземпляр бота
+    // $parsed - разобранное сообщение
+    
+    // Ваша логика
+    if (!$this->someCondition()) {
+        $bot->sendSelf('❌ Условие не выполнено');
+        return false; // Блокируем дальнейшую обработку
     }
     
-    private function recordMetrics(LightBot $bot, array $metrics): void
-    {
-        $duration = $metrics['time_end'] - $metrics['time_start'];
-        $memoryUsed = $metrics['memory_end'] - $metrics['memory_start'];
-        
-        // Отправляем в систему мониторинга
-        $this->sendTelemetry([
-            'bot_name' => $bot->getBotName(),
-            'duration_ms' => round($duration * 1000, 2),
-            'memory_used_mb' => round($memoryUsed / 1024 / 1024, 2),
-            'memory_peak_mb' => round($metrics['memory_peak'] / 1024 / 1024, 2),
-            'action_type' => $this->getActionType($bot),
-            'timestamp' => now()
-        ]);
-        
-        // Предупреждение о высоком потреблении ресурсов
-        if ($duration > 5.0 || $memoryUsed > 50 * 1024 * 1024) {
-            logger()->warning('High resource usage detected', [
-                'bot' => $bot->getBotName(),
-                'duration' => $duration,
-                'memory_used' => $memoryUsed
-            ]);
-        }
-    }
+    return true; // Разрешаем продолжить
 }
+
+// Регистрация
+$this->middleware([$this, 'myCustomMiddleware']);
 ```
 
-## 🔄 Conditional Middleware
-
-### Динамическое применение
+### Класс middleware
 
 ```php
-<?php
-// app/Bots/SmartBot.php
-namespace App\Bots;
-
-use Teg\LightBot;
-
-class SmartBot extends LightBot
+class BusinessHoursMiddleware
 {
-    public function main(): void
-    {
-        // Применяем middleware в зависимости от условий
-        $this->applyConditionalMiddleware();
-        
-        $this->commands();
-        $this->handleMessage();
-    }
-    
-    private function applyConditionalMiddleware(): void
-    {
-        // Для новых пользователей
-        $this->middleware(['onboarding'])->when(function () {
-            return $this->isNewUser();
-        });
-        
-        // Для групповых чатов
-        $this->middleware(['group_rules', 'moderation'])->when(function () {
-            return $this->isGroup();
-        });
-        
-        // В рабочее время
-        $this->middleware(['business_hours'])->when(function () {
-            return $this->isBusinessHours();
-        });
-        
-        // Для премиум пользователей
-        $this->middleware(['premium_features'])->when(function () {
-            return $this->isPremiumUser();
-        });
-        
-        // По дням недели
-        $this->middleware(['weekend_mode'])->when(function () {
-            return now()->isWeekend();
-        });
-    }
-    
-    private function isNewUser(): bool
-    {
-        return !UserActivity::where('user_id', $this->getUserId)
-            ->where('bot_name', $this->getBotName())
-            ->exists();
-    }
-    
-    private function isBusinessHours(): bool
+    public function handle($bot, $parsed, $next)
     {
         $hour = now()->hour;
-        return $hour >= 9 && $hour <= 18 && !now()->isWeekend();
-    }
-    
-    private function isPremiumUser(): bool
-    {
-        return $this->getUserPermissions()['premium'] ?? false;
-    }
-}
-```
-
-### Middleware Groups
-
-```php
-<?php
-// app/TegBot/Kernel.php
-namespace App\TegBot;
-
-class Kernel
-{
-    protected array $middlewareGroups = [
-        'basic' => [
-            'security',
-            'rate_limit',
-            'analytics'
-        ],
         
-        'premium' => [
-            'security',
-            'rate_limit:premium',
-            'analytics',
-            'premium_features',
-            'priority_support'
-        ],
+        if ($hour < 9 || $hour > 18) {
+            $bot->sendSelf('⏰ Бот работает только в рабочее время (9:00-18:00)');
+            return false;
+        }
         
-        'admin' => [
-            'security',
-            'auth:admin',
-            'audit',
-            'no_rate_limit',
-            'analytics'
-        ],
-        
-        'api' => [
-            'cors',
-            'rate_limit:api',
-            'api_auth',
-            'json_response'
-        ],
-        
-        'development' => [
-            'security:relaxed',
-            'debug',
-            'performance_profiling'
-        ]
-    ];
-}
-
-// Использование в боте
-class EcommerceBot extends LightBot
-{
-    public function main(): void
-    {
-        // Применяем группу middleware в зависимости от окружения
-        $group = app()->environment('production') ? 'premium' : 'development';
-        $this->middleware($group);
-        
-        $this->handleRequest();
-    }
-}
-```
-
-## 🔧 Продвинутые паттерны
-
-### Pipeline Middleware
-
-```php
-<?php
-// app/TegBot/Middleware/PipelineMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class PipelineMiddleware
-{
-    private array $stages;
-    
-    public function __construct(array $stages)
-    {
-        $this->stages = $stages;
-    }
-    
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $pipeline = array_reduce(
-            array_reverse($this->stages),
-            $this->carry(),
-            function ($bot) use ($next) {
-                return $next($bot);
-            }
-        );
-        
-        return $pipeline($bot);
-    }
-    
-    private function carry(): \Closure
-    {
-        return function ($stack, $stage) {
-            return function ($bot) use ($stack, $stage) {
-                return (new $stage)->handle($bot, $stack);
-            };
-        };
+        return $next($bot, $parsed);
     }
 }
 
 // Использование
-$this->middleware([
-    new PipelineMiddleware([
-        ValidateInputMiddleware::class,
-        SanitizeDataMiddleware::class,
-        CheckPermissionsMiddleware::class,
-        LogActivityMiddleware::class,
-    ])
+$this->middleware(new BusinessHoursMiddleware());
+```
+
+### Middleware с параметрами
+
+```php
+class RoleMiddleware
+{
+    private array $requiredRoles;
+    
+    public function __construct(array $roles)
+    {
+        $this->requiredRoles = $roles;
+    }
+    
+    public function handle($bot, $parsed, $next)
+    {
+        $userId = $bot->getUserId;
+        $userRoles = $this->getUserRoles($userId);
+        
+        $hasRequiredRole = false;
+        foreach ($this->requiredRoles as $role) {
+            if (in_array($role, $userRoles)) {
+                $hasRequiredRole = true;
+                break;
+            }
+        }
+        
+        if (!$hasRequiredRole) {
+            $rolesStr = implode(', ', $this->requiredRoles);
+            $bot->sendSelf("🚫 Требуется одна из ролей: {$rolesStr}");
+            return false;
+        }
+        
+        return $next($bot, $parsed);
+    }
+    
+    private function getUserRoles(int $userId): array
+    {
+        // Логика получения ролей пользователя
+        return User::find($userId)?->roles ?? [];
+    }
+}
+
+// Использование
+$this->registerCommand('moderate', $callback, [
+    'middleware' => [
+        new RoleMiddleware(['moderator', 'admin']),
+    ],
 ]);
 ```
 
-### Caching Middleware
+## Pipeline обработка
+
+### Последовательность выполнения
 
 ```php
-<?php
-// app/TegBot/Middleware/CachingMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-use Illuminate\Support\Facades\Cache;
-
-class CachingMiddleware
+public function main(): void
 {
-    private int $ttl;
+    // 1. Глобальные middleware выполняются первыми
+    $this->globalMiddleware([
+        'security_check',      // проверка безопасности
+        'user_authentication', // аутентификация
+        'rate_limiting',       // ограничения
+        'logging',            // логирование
+    ]);
     
-    public function __construct(int $ttl = 3600)
-    {
-        $this->ttl = $ttl;
+    // 2. Затем middleware команд (если это команда)
+    $this->registerCommand('sensitive', $callback, [
+        'middleware' => [
+            'additional_auth',  // дополнительная аутентификация
+            'audit_logging',    // аудит логирование
+        ],
+    ]);
+}
+```
+
+### Остановка pipeline
+
+```php
+private function securityCheckMiddleware($bot, $parsed): bool
+{
+    // Проверяем на подозрительную активность
+    if ($this->detectSuspiciousActivity($bot->getUserId)) {
+        // Блокируем пользователя
+        $this->blockUser($bot->getUserId);
+        
+        // Уведомляем админов
+        $this->notifyAdmins("🚨 Заблокирован пользователь: {$bot->getUserId}");
+        
+        // ОСТАНАВЛИВАЕМ обработку
+        return false;
     }
     
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        $cacheKey = $this->generateCacheKey($bot);
-        
-        // Пробуем получить из кэша
-        if (Cache::has($cacheKey)) {
-            $cachedResponse = Cache::get($cacheKey);
-            $this->sendCachedResponse($bot, $cachedResponse);
-            return $cachedResponse;
+    return true;
+}
+```
+
+## Условные middleware
+
+### Middleware по типу сообщения
+
+```php
+private function mediaOnlyMiddleware($bot, $parsed): bool
+{
+    $messageType = $bot->getMessageType();
+    
+    if (!in_array($messageType, ['photo', 'video', 'document'])) {
+        $bot->sendSelf('📎 Отправьте медиа файл');
+        return false;
+    }
+    
+    return true;
+}
+
+// Применение только к определенным командам
+$this->registerCommand('upload', $callback, [
+    'middleware' => [[$this, 'mediaOnlyMiddleware']],
+]);
+```
+
+### Middleware по времени
+
+```php
+private function weekdaysOnlyMiddleware($bot, $parsed): bool
+{
+    $dayOfWeek = now()->dayOfWeek;
+    
+    // 1 = понедельник, 7 = воскресенье
+    if ($dayOfWeek < 1 || $dayOfWeek > 5) {
+        $bot->sendSelf('📅 Команда доступна только в рабочие дни');
+        return false;
+    }
+    
+    return true;
+}
+```
+
+### Middleware по размеру чата
+
+```php
+private function smallGroupsOnlyMiddleware($bot, $parsed): bool
+{
+    if ($bot->getChatType() !== 'group') {
+        return true; // Пропускаем приватные чаты
+    }
+    
+    $chatMembersCount = $bot->getChatMembersCount();
+    
+    if ($chatMembersCount > 100) {
+        $bot->sendSelf('👥 Команда доступна только в небольших группах (до 100 участников)');
+        return false;
+    }
+    
+    return true;
+}
+```
+
+## Middleware для безопасности
+
+### Валидация входных данных
+
+```php
+private function inputValidationMiddleware($bot, $parsed): bool
+{
+    $text = $bot->getMessageText();
+    
+    if (!$text) {
+        return true; // Пропускаем не-текстовые сообщения
+    }
+    
+    // Проверка на SQL инъекции
+    $sqlPatterns = [
+        '/union\s+select/i',
+        '/drop\s+table/i',
+        '/delete\s+from/i',
+        '/insert\s+into/i',
+    ];
+    
+    foreach ($sqlPatterns as $pattern) {
+        if (preg_match($pattern, $text)) {
+            $bot->sendSelf('🚫 Обнаружена попытка SQL инъекции');
+            $this->logSecurityIncident('sql_injection_attempt', [
+                'user_id' => $bot->getUserId,
+                'text' => $text,
+            ]);
+            return false;
         }
-        
-        // Выполняем обработку
-        $response = $next($bot);
-        
-        // Сохраняем в кэш если это кэшируемый ответ
-        if ($this->shouldCache($bot, $response)) {
-            Cache::put($cacheKey, $response, $this->ttl);
-        }
-        
-        return $response;
     }
     
-    private function generateCacheKey(LightBot $bot): string
-    {
-        return sprintf(
-            'bot_response:%s:%s:%s',
-            $bot->getBotName(),
-            $bot->getUserId,
-            hash('sha256', $bot->getMessageText ?? $bot->getCallbackData ?? '')
-        );
+    // Проверка на XSS
+    if (strip_tags($text) !== $text) {
+        $bot->sendSelf('🚫 HTML теги не разрешены');
+        return false;
     }
     
-    private function shouldCache(LightBot $bot, $response): bool
-    {
-        // Кэшируем только определенные типы ответов
-        return $bot->hasCommand() && 
-               !$bot->isAdminCommand() && 
-               $response !== false;
+    // Проверка длины сообщения
+    if (strlen($text) > 4000) {
+        $bot->sendSelf('📝 Сообщение слишком длинное (максимум 4000 символов)');
+        return false;
+    }
+    
+    return true;
+}
+```
+
+### Защита от ботов
+
+```php
+private function antiBotMiddleware($bot, $parsed): bool
+{
+    $userId = $bot->getUserId;
+    
+    // Проверяем паттерны поведения ботов
+    $patterns = $this->checkBotPatterns($userId);
+    
+    if ($patterns['is_likely_bot']) {
+        $bot->sendSelf('🤖 Обнаружено автоматизированное поведение');
+        
+        // Отправляем CAPTCHA
+        $this->sendCaptcha($bot);
+        
+        return false;
+    }
+    
+    return true;
+}
+
+private function checkBotPatterns(int $userId): array
+{
+    $recentMessages = Cache::get("user_messages:{$userId}", []);
+    
+    // Слишком быстрые сообщения
+    $tooFast = $this->checkMessageSpeed($recentMessages);
+    
+    // Одинаковые сообщения
+    $repeating = $this->checkRepeatingMessages($recentMessages);
+    
+    // Подозрительные интервалы
+    $suspiciousIntervals = $this->checkIntervals($recentMessages);
+    
+    return [
+        'is_likely_bot' => $tooFast || $repeating || $suspiciousIntervals,
+        'fast_messages' => $tooFast,
+        'repeating' => $repeating,
+        'suspicious_intervals' => $suspiciousIntervals,
+    ];
+}
+```
+
+## Middleware для логирования
+
+### Подробное логирование
+
+```php
+private function detailedLoggingMiddleware($bot, $parsed): bool
+{
+    $logData = [
+        'user_id' => $bot->getUserId,
+        'chat_id' => $bot->getChatId,
+        'chat_type' => $bot->getChatType(),
+        'message_type' => $bot->getMessageType(),
+        'timestamp' => now()->toISOString(),
+        'user_agent' => request()->userAgent(),
+        'ip_address' => request()->ip(),
+    ];
+    
+    // Добавляем информацию о сообщении
+    if ($bot->hasMessageText()) {
+        $logData['text_length'] = strlen($bot->getMessageText());
+        $logData['is_command'] = $bot->isMessageCommand();
+    }
+    
+    // Добавляем информацию о медиа
+    if ($bot->getMessageType() !== 'text') {
+        $logData['media_info'] = $this->getMediaInfo($bot);
+    }
+    
+    // Сохраняем лог
+    $this->saveDetailedLog($logData);
+    
+    return true;
+}
+
+private function getMediaInfo($bot): array
+{
+    $type = $bot->getMessageType();
+    
+    switch ($type) {
+        case 'photo':
+            return $bot->getPhotoInfo();
+        case 'video':
+            return $bot->getVideoInfo();
+        case 'document':
+            return $bot->getDocumentInfo();
+        default:
+            return ['type' => $type];
     }
 }
 ```
 
-## 🔧 Управление Middleware через CLI
-
-### Команды управления
-
-```bash
-# Просмотр зарегистрированных middleware
-php artisan teg:middleware list
-php artisan teg:middleware list --bot=shop_bot
-
-# Включение/отключение middleware
-php artisan teg:middleware enable shop_bot auth
-php artisan teg:middleware disable shop_bot rate_limit
-
-# Настройка параметров middleware
-php artisan teg:middleware config shop_bot throttle --max=100 --window=60
-
-# Тестирование middleware
-php artisan teg:middleware test shop_bot auth --user=123456789
-
-# Создание нового middleware
-php artisan make:tegbot-middleware CustomMiddleware
-php artisan make:tegbot-middleware CustomMiddleware --security
-
-# Анализ производительности middleware
-php artisan teg:middleware performance
-php artisan teg:middleware performance --bot=shop_bot
-```
-
-### Конфигурация middleware через настройки
-
-```bash
-# Настройка middleware для бота
-php artisan teg:bot config shop_bot --set middleware.global="security,rate_limit,analytics"
-php artisan teg:bot config shop_bot --set middleware.admin="auth:admin,audit"
-php artisan teg:bot config shop_bot --set middleware.api="cors,throttle:api"
-
-# Параметры middleware
-php artisan teg:bot config shop_bot --set middleware.params.rate_limit.max=120
-php artisan teg:bot config shop_bot --set middleware.params.auth.timeout=3600
-
-# Условия применения
-php artisan teg:bot config shop_bot --set middleware.conditions.premium="user.type=premium"
-php artisan teg:bot config shop_bot --set middleware.conditions.business_hours="time.hour>=9,time.hour<=18"
-```
-
-## 📊 Мониторинг и отладка
-
-### Middleware Profiler
+### Аудит команд
 
 ```php
-<?php
-// app/TegBot/Middleware/ProfilerMiddleware.php
-namespace App\TegBot\Middleware;
-
-use Teg\LightBot;
-
-class ProfilerMiddleware
+private function commandAuditMiddleware($bot, $parsed): bool
 {
-    public function handle(LightBot $bot, \Closure $next)
-    {
-        if (!config('app.debug')) {
-            return $next($bot);
-        }
-        
-        $profiler = new MiddlewareProfiler();
-        $profiler->start($bot);
-        
-        $response = $next($bot);
-        
-        $profiler->end($bot, $response);
-        $profiler->sendReport();
-        
-        return $response;
+    if (!$bot->isMessageCommand()) {
+        return true;
     }
-}
-
-class MiddlewareProfiler
-{
-    private array $timeline = [];
     
-    public function start(LightBot $bot): void
-    {
-        $this->timeline[] = [
-            'type' => 'start',
-            'bot' => $bot->getBotName(),
+    $commandText = $bot->getMessageText();
+    $parts = explode(' ', ltrim($commandText, '/'));
+    $command = $parts[0];
+    $args = array_slice($parts, 1);
+    
+    // Логируем выполнение команды
+    $this->auditLog('command_execution', [
+        'command' => $command,
+        'args' => $args,
+        'user_id' => $bot->getUserId,
+        'chat_id' => $bot->getChatId,
+        'timestamp' => now(),
+        'success' => null, // Будет установлено после выполнения
+    ]);
+    
+    return true;
+}
+```
+
+## Middleware для производительности
+
+### Кэширование
+
+```php
+private function cachingMiddleware($bot, $parsed): bool
+{
+    $cacheKey = $this->generateCacheKey($bot);
+    
+    // Проверяем кэш
+    $cachedResponse = Cache::get($cacheKey);
+    
+    if ($cachedResponse) {
+        $bot->sendSelf($cachedResponse);
+        
+        // Логируем cache hit
+        $this->logActivity('cache_hit', [
+            'key' => $cacheKey,
             'user_id' => $bot->getUserId,
-            'memory' => memory_get_usage(true),
-            'time' => microtime(true)
-        ];
+        ]);
+        
+        return false; // Останавливаем дальнейшую обработку
     }
     
-    public function end(LightBot $bot, $response): void
-    {
-        $this->timeline[] = [
-            'type' => 'end',
-            'bot' => $bot->getBotName(),
-            'memory' => memory_get_usage(true),
-            'time' => microtime(true),
-            'response_type' => gettype($response)
-        ];
-    }
+    return true;
+}
+
+private function generateCacheKey($bot): string
+{
+    $userId = $bot->getUserId;
+    $messageText = $bot->getMessageText();
     
-    public function sendReport(): void
-    {
-        $start = $this->timeline[0];
-        $end = end($this->timeline);
-        
-        $report = [
-            'duration_ms' => round(($end['time'] - $start['time']) * 1000, 2),
-            'memory_used_mb' => round(($end['memory'] - $start['memory']) / 1024 / 1024, 2),
-            'bot' => $start['bot'],
-            'user_id' => $start['user_id']
-        ];
-        
-        logger()->debug('Middleware execution report', $report);
-    }
+    return "bot_response:" . md5($userId . $messageText);
 }
 ```
 
-### Debugging команды
+### Ограничение ресурсов
 
-```bash
-# Трассировка выполнения middleware
-php artisan teg:middleware trace shop_bot --user=123456789 --message="/start"
-
-# Просмотр логов middleware
-php artisan teg:middleware logs shop_bot --tail --filter=error
-
-# Статистика выполнения
-php artisan teg:middleware stats --period=1h --breakdown=bot
-
-# Проверка конфигурации
-php artisan teg:middleware validate shop_bot
+```php
+private function resourceLimitMiddleware($bot, $parsed): bool
+{
+    // Проверяем использование памяти
+    $memoryUsage = memory_get_usage(true);
+    $maxMemory = 128 * 1024 * 1024; // 128MB
+    
+    if ($memoryUsage > $maxMemory) {
+        $bot->sendSelf('🚨 Превышен лимит памяти. Попробуйте позже.');
+        
+        $this->logError('Memory limit exceeded', null, [
+            'memory_usage' => $memoryUsage,
+            'user_id' => $bot->getUserId,
+        ]);
+        
+        return false;
+    }
+    
+    // Проверяем время выполнения
+    $executionTime = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
+    $maxTime = 25; // 25 секунд
+    
+    if ($executionTime > $maxTime) {
+        $bot->sendSelf('⏱️ Превышен лимит времени выполнения.');
+        return false;
+    }
+    
+    return true;
+}
 ```
 
-## 📚 Best Practices
+## Отладка middleware
 
-### 🎯 Проектирование Middleware
-1. **Принцип единственной ответственности**: Один middleware = одна задача
-2. **Композиция**: Объединяйте простые middleware в сложные pipelines
-3. **Переиспользование**: Создавайте универсальные middleware для всех ботов
-4. **Производительность**: Избегайте тяжелых операций в middleware
+### Middleware отладки
 
-### 🔧 Порядок выполнения
-1. **Global middleware**: Базовая безопасность и валидация
-2. **Bot-specific middleware**: Специфическая логика бота
-3. **Command middleware**: Middleware для конкретных команд
-4. **Response middleware**: Обработка ответов
+```php
+private function debugMiddleware($bot, $parsed): bool
+{
+    if (!config('tegbot.debug')) {
+        return true;
+    }
+    
+    $debugInfo = [
+        'middleware' => 'debug',
+        'user_id' => $bot->getUserId,
+        'message_type' => $bot->getMessageType(),
+        'text_preview' => substr($bot->getMessageText() ?? '', 0, 50),
+        'memory_usage' => memory_get_usage(true),
+        'timestamp' => microtime(true),
+    ];
+    
+    Log::debug('TegBot Debug Middleware', $debugInfo);
+    
+    // Отправляем debug info админам
+    if ($this->shouldSendDebugToAdmins()) {
+        $debugMessage = "🔍 **Debug Info**\n";
+        $debugMessage .= "User: {$debugInfo['user_id']}\n";
+        $debugMessage .= "Type: {$debugInfo['message_type']}\n";
+        $debugMessage .= "Memory: " . $this->formatBytes($debugInfo['memory_usage']);
+        
+        $this->sendToAdmins($debugMessage);
+    }
+    
+    return true;
+}
+```
 
-### 🛡️ Безопасность
-1. **Проверка входных данных**: Всегда валидируйте входящие сообщения
-2. **Rate limiting**: Защита от спама и DDoS
-3. **Аудит**: Логирование всех критических действий
-4. **Graceful degradation**: Корректная обработка ошибок
+## Примеры использования
 
-### 📊 Мониторинг
-1. **Метрики производительности**: Отслеживайте время выполнения
-2. **Использование ресурсов**: Мониторинг памяти и CPU
-3. **Частота ошибок**: Алерты на аномалии
-4. **Пользовательская активность**: Аналитика использования
+### E-commerce бот
+
+```php
+public function main(): void
+{
+    $this->globalMiddleware([
+        'spam_protection',
+        'user_validation',
+        'business_hours_check',
+        'maintenance_mode_check',
+    ]);
+    
+    $this->registerCommand('order', $callback, [
+        'middleware' => [
+            'customer_verification',
+            'payment_method_check',
+            'inventory_check',
+        ],
+    ]);
+}
+```
+
+### Модерационный бот
+
+```php
+public function main(): void
+{
+    $this->globalMiddleware([
+        'admin_authentication',
+        'audit_logging',
+        'rate_limiting',
+    ]);
+    
+    $this->registerCommand('ban', $callback, [
+        'middleware' => [
+            'verify_target_user',
+            'check_ban_permissions',
+            'validate_ban_reason',
+        ],
+    ]);
+}
+```
+
+### Служебный бот
+
+```php
+public function main(): void
+{
+    $this->globalMiddleware([
+        'ip_whitelist_check',
+        'api_key_validation',
+        'request_throttling',
+    ]);
+    
+    $this->registerCommand('deploy', $callback, [
+        'middleware' => [
+            'deployment_permissions',
+            'system_health_check',
+            'backup_verification',
+        ],
+    ]);
+}
+```
 
 ---
 
-🔧 **TegBot v2.0 Middleware** - Мощная и гибкая система обработки для ваших ботов! 
+🔄 **Middleware TegBot** - максимальный контроль над обработкой сообщений! 

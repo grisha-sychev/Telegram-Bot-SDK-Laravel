@@ -52,13 +52,15 @@ Route::post('/webhook/{botName}', function ($botName) {
         
         \Log::info("TegBot: Processing webhook for bot: {$botName}");
         
-        // Запускаем обработку
-        if (method_exists($bot, 'run')) {
+        // Запускаем обработку (приоритет: safeMain > run > main)
+        if (method_exists($bot, 'safeMain')) {
+            return $bot->safeMain();
+        } elseif (method_exists($bot, 'run')) {
             return $bot->run()->main();
         } elseif (method_exists($bot, 'main')) {
             return $bot->main();
         } else {
-            \Log::error("TegBot: Bot {$class} has no main() or run() method");
+            \Log::error("TegBot: Bot {$class} has no safeMain(), main() or run() method");
             return response()->json(['error' => 'Bot method not found'], 500);
         }
         

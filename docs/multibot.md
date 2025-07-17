@@ -1,760 +1,504 @@
-# 🤖 TegBot v2.0 - Мультиботная архитектура
+# 🤖 TegBot Multi-Bot System
 
 ## Обзор
 
-**TegBot v2.0** основан на революционной мультиботной архитектуре, позволяющей управлять множеством Telegram ботов из одного Laravel приложения. Это не дополнительная функция, а основа всей системы v2.0.
+TegBot теперь поддерживает мультиботную архитектуру, позволяющую управлять несколькими ботами из одного приложения Laravel. Каждый бот имеет свою конфигурацию, токен и webhook, но использует общую инфраструктуру.
 
-⚠️ **ВАЖНО:** TegBot v2.0 НЕ совместим с v1.x. Это полностью новая архитектура.
+## Ключевые возможности
 
-## Ключевые революционные изменения
+- ✅ **Множественные боты**: Управление неограниченным количеством ботов
+- ✅ **База данных**: Хранение конфигурации ботов в БД
+- ✅ **Интерактивная настройка**: Простая команда `php artisan teg:set`
+- ✅ **Автоматическое создание классов**: Генерация шаблонов ботов
+- ✅ **Современные webhook'и**: Безопасные URL без токенов
+- ✅ **Централизованное управление**: Команды для управления ботами
+- ✅ **Обратная совместимость**: Поддержка старых конфигураций
 
-- 🗄️ **База данных как источник истины**: Вся конфигурация ботов хранится в БД
-- 🚫 **Конец .env токенов**: Токены больше не хранятся в файлах конфигурации
-- 🎯 **Один проект = множество ботов**: Неограниченное количество ботов в одном приложении
-- 🔐 **Индивидуальная безопасность**: Каждый бот имеет свои настройки безопасности
-- 🌐 **Современные webhook**: URL вида `/webhook/{botName}` вместо `/bot/{token}`
-- 🎛️ **Централизованное управление**: Полный контроль через artisan команды
-- 📊 **Раздельный мониторинг**: Диагностика и метрики для каждого бота
+## Быстрый старт
 
-## Архитектурные принципы
+### 1. Запуск миграций
 
-### 1. База данных как единый источник истины
+```bash
+php artisan migrate
+```
+
+### 2. Добавление первого бота
+
+```bash
+php artisan teg:set
+```
+
+Команда запросит:
+- **Имя бота** (латинские буквы, без пробелов)
+- **Токен** (полученный от @BotFather)
+- **ID администраторов** (опционально)
+
+### 3. Просмотр ботов
+
+```bash
+php artisan teg:bot list
+```
+
+## Команды управления
+
+### Добавление нового бота
+
+```bash
+php artisan teg:set
+```
+
+**Интерактивный процесс:**
+1. Показывает существующие боты
+2. Запрашивает имя нового бота
+3. Проверяет уникальность имени
+4. Запрашивает токен бота
+5. Проверяет токен через Telegram API
+6. Создает запись в базе данных
+7. Генерирует класс бота
+8. Настраивает webhook (опционально)
+
+### Управление ботами
+
+```bash
+# Список всех ботов
+php artisan teg:bot list
+
+# Информация о конкретном боте
+php artisan teg:bot show mybot
+
+# Активация бота
+php artisan teg:bot enable mybot
+
+# Отключение бота
+php artisan teg:bot disable mybot
+
+# Удаление бота
+php artisan teg:bot delete mybot
+
+# Тестирование бота
+php artisan teg:bot test mybot
+```
+
+## Структура базы данных
+
+### Таблица `tegbot_bots`
 
 ```sql
--- Центральная таблица всех ботов
 CREATE TABLE tegbot_bots (
     id BIGINT PRIMARY KEY,
-    name VARCHAR(255) UNIQUE,        -- Уникальное имя бота
+    name VARCHAR(255) UNIQUE,        -- Имя бота (mybot)
     token VARCHAR(255) UNIQUE,       -- Токен от BotFather
-    username VARCHAR(255),           -- Username (@mybotname)
-    first_name VARCHAR(255),         -- Отображаемое имя
-    description TEXT,                -- Описание назначения
-    bot_id BIGINT UNIQUE,           -- ID в Telegram
-    enabled BOOLEAN DEFAULT TRUE,    -- Статус активности
-    webhook_url VARCHAR(255),        -- URL для webhook
-    webhook_secret VARCHAR(255),     -- Индивидуальный секрет
-    settings JSON,                   -- Персональные настройки
-    admin_ids JSON,                  -- Администраторы бота
+    username VARCHAR(255),           -- Username бота (@mybot)
+    first_name VARCHAR(255),         -- Имя бота
+    description TEXT,                -- Описание бота
+    bot_id BIGINT UNIQUE,           -- ID бота в Telegram
+    enabled BOOLEAN DEFAULT TRUE,    -- Активен ли бот
+    webhook_url VARCHAR(255),        -- URL webhook
+    webhook_secret VARCHAR(255),     -- Секрет webhook
+    settings JSON,                   -- Дополнительные настройки
+    admin_ids JSON,                  -- ID администраторов
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
 ```
 
-### 2. Автоматическая генерация классов
+## Структура классов ботов
 
-Каждый бот автоматически получает свой класс:
+### Автоматически генерируемый класс
 
 ```php
 <?php
-// app/Bots/ShopBot.php - автоматически создается
+
 namespace App\Bots;
 
 use Teg\LightBot;
 
-class ShopBot extends LightBot
+class MybotBot extends LightBot
 {
-    public function main(): void
-    {
-        $this->commands();
-        
-        if ($this->hasMessageText() && $this->isMessageCommand()) {
-            $this->handleCommand($this->getMessageText);
-        } else {
-            $this->fallback();
-        }
-    }
-
     public function commands(): void
     {
         $this->registerCommand('start', function () {
-            $this->sendSelf('🛍️ Добро пожаловать в магазин!');
-        }, ['description' => 'Запуск бота']);
+            $this->sendSelf('🎉 Привет! Я бот mybot');
+        }, [
+            'description' => 'Запуск бота'
+        ]);
 
-        $this->registerCommand('catalog', function () {
-            $this->showCatalog();
-        }, ['description' => 'Показать каталог товаров']);
+        $this->registerCommand('help', function () {
+            $this->sendSelf('📋 Доступные команды:\n/start - Запуск бота\n/help - Помощь');
+        }, [
+            'description' => 'Помощь'
+        ]);
     }
 
     public function fallback(): void
     {
-        $this->sendSelf('❓ Неизвестная команда. Используйте /help.');
+        $this->sendSelf('❓ Неизвестная команда. Используйте /help для получения справки.');
     }
 }
 ```
 
-### 3. Современная маршрутизация
+## Webhook маршруты
 
-```php
-// routes/tegbot.php - автоматически создается
-Route::post('/webhook/{botName}', function ($botName) {
-    // Загрузка бота из базы данных
-    $botModel = Bot::byName($botName)->where('enabled', true)->first();
-    
-    if (!$botModel) {
-        return response()->json(['error' => 'Bot not found'], 404);
-    }
+### Современный безопасный маршрут (рекомендуется)
 
-    // Создание экземпляра класса
-    $class = $botModel->getBotClass(); // App\Bots\ShopBot
-    $bot = new $class();
-    
-    // Инициализация с данными из БД
-    $bot->setToken($botModel->token);
-    $bot->setBotName($botName);
-    $bot->setBotModel($botModel);
-    
-    // Обработка запроса
-    return response()->json(['ok' => true]);
-});
+```
+POST /webhook/{botName}
 ```
 
-## Быстрый старт с нуля
+**Пример:** `https://yourdomain.com/webhook/mybot`
 
-### Шаг 1: Установка TegBot v2.0
+**Преимущества:**
+- Токен не передается в URL
+- Более безопасно
+- Легче логировать и отслеживать
 
-```bash
-# Установка пакета
-composer require tegbot/tegbot
+### Классический маршрут (обратная совместимость)
 
-# Публикация конфигурации и маршрутов
-php artisan vendor:publish --provider="Teg\Providers\TegbotServiceProvider"
-
-# Создание таблиц базы данных
-php artisan migrate
+```
+POST /bot/{token}
 ```
 
-### Шаг 2: Настройка окружения
+**Пример:** `https://yourdomain.com/bot/123456789:AABBccDD...`
+
+## Конфигурация
+
+### Переменные окружения
 
 ```env
-# .env - НЕ СОДЕРЖИТ ТОКЕНОВ БОТОВ!
+# Мультибот настройки
 TEGBOT_MULTIBOT_ENABLED=true
 TEGBOT_AUTO_CREATE_CLASSES=true
+TEGBOT_MAX_BOTS=100
+TEGBOT_AUTO_ENABLE_BOTS=true
+
+# Webhook настройки
+TEGBOT_AUTO_GENERATE_WEBHOOK_SECRET=true
 TEGBOT_WEBHOOK_BASE_URL=https://yourdomain.com
-TEGBOT_WEBHOOK_SECRET=your_global_secret_32_chars
+
+# Логирование
+TEGBOT_LOG_MULTIBOT=true
+TEGBOT_STORE_COMMANDS_HISTORY=true
+
+# Производительность
+TEGBOT_CACHE_BOT_INFO=true
+TEGBOT_CACHE_BOT_INFO_TTL=3600
 ```
 
-### Шаг 3: Добавление первого бота
+### Конфигурация в config/tegbot.php
+
+```php
+'multibot' => [
+    'enabled' => true,
+    'auto_create_classes' => true,
+    'bots_path' => 'App\\Bots',
+    'bots_namespace' => 'App\\Bots',
+    'max_bots' => 100,
+    'auto_enable' => true,
+],
+```
+
+## Примеры использования
+
+### Создание бота магазина
 
 ```bash
 php artisan teg:set
-```
-
-**Интерактивный процесс добавления:**
-
-```
-🚀 TegBot v2.0 Multi-Bot Setup Wizard
-
-📋 Существующие боты: (пусто)
-
-➕ Добавление нового бота
-
-Введите имя бота (латинские буквы, без пробелов): shop
-Введите токен бота (полученный от @BotFather): 123456789:AABBccDDeeFFggHHiiJJ...
-Введите ID администраторов (через запятую): 123456789
-
-🔍 Проверка токена через Telegram API...
-✅ Токен валиден
-
-🤖 Информация о боте:
-  📝 Имя: My Shop Bot  
-  🆔 Username: @myshopbot
-  📡 ID: 123456789
-  📄 Описание: (можно добавить позже)
-
-✅ Сохранение в базу данных...
-✅ Создание класса: app/Bots/ShopBot.php
-🌐 Настройка webhook: https://yourdomain.com/webhook/shop
-✅ Установка webhook в Telegram
-
-🎉 Бот 'shop' успешно добавлен и готов к работе!
-
-📋 Следующие шаги:
-  • Отредактируйте app/Bots/ShopBot.php для добавления логики
-  • Проверьте работу: php artisan teg:bot test shop
-  • Посмотрите статус: php artisan teg:health
-```
-
-### Шаг 4: Проверка работы
-
-```bash
-# Проверка состояния системы
-php artisan teg:health
-
-# Список всех ботов
-php artisan teg:bot list
-
-# Тестирование конкретного бота
-php artisan teg:bot test shop
-```
-
-## Полное управление через команды
-
-### Базовые операции с ботами
-
-```bash
-# Создание нового бота
-php artisan teg:set
-
-# Просмотр списка
-php artisan teg:bot list --format=table
-
-# Детальная информация
-php artisan teg:bot show shop
-
-# Управление состоянием
-php artisan teg:bot enable shop     # Активация
-php artisan teg:bot disable shop    # Деактивация
-php artisan teg:bot delete shop     # Удаление (с подтверждением)
-
-# Тестирование и диагностика
-php artisan teg:bot test shop       # Полная проверка бота
-php artisan teg:health --bot=shop   # Здоровье конкретного бота
-```
-
-### Управление настройками ботов
-
-```bash
-# Просмотр настроек бота
-php artisan teg:bot show shop
-
-# Изменение настроек
-php artisan teg:bot config shop --setting=language --value=en
-php artisan teg:bot config shop --setting=timezone --value="Europe/London"
-php artisan teg:bot config shop --setting=features --value='["payments","inline"]'
-
-# Управление администраторами
-php artisan teg:bot admin shop --add=987654321
-php artisan teg:bot admin shop --remove=111222333
-php artisan teg:bot admin shop --list
-```
-
-### Webhook операции
-
-```bash
-# Информация о webhook
-php artisan teg:webhook info shop
-
-# Установка/обновление webhook  
-php artisan teg:webhook set shop
-php artisan teg:webhook set shop https://custom-domain.com/webhook/shop
-
-# Удаление webhook
-php artisan teg:webhook delete shop
-
-# Тестирование webhook
-php artisan teg:webhook test shop
-```
-
-## Расширенные сценарии использования
-
-### E-commerce экосистема
-
-```bash
-# Создание набора ботов для интернет-магазина
-php artisan teg:set  # shop - основной магазин
-php artisan teg:set  # support - служба поддержки  
-php artisan teg:set  # analytics - аналитика для админов
-php artisan teg:set  # notifications - уведомления о заказах
+# Имя: shop
+# Токен: 123456789:AABBccDD...
+# Админы: 123456789
 ```
 
 **Результат:**
-```
-app/Bots/
-├── ShopBot.php          # Каталог, заказы, платежи
-├── SupportBot.php       # Тикеты, FAQ, связь с операторами  
-├── AnalyticsBot.php     # Статистика продаж, отчеты
-└── NotificationsBot.php # Уведомления о новых заказах
-```
+- Файл: `app/Bots/ShopBot.php`
+- Webhook: `https://yourdomain.com/webhook/shop`
+- Database запись в `tegbot_bots`
 
-**Webhook endpoints:**
-```
-https://yourdomain.com/webhook/shop
-https://yourdomain.com/webhook/support  
-https://yourdomain.com/webhook/analytics
-https://yourdomain.com/webhook/notifications
-```
-
-### Медиа-платформа
+### Создание новостного бота
 
 ```bash
-# Создание ботов для новостного проекта
-php artisan teg:set  # news_ru - русские новости
-php artisan teg:set  # news_en - английские новости
-php artisan teg:set  # breaking - экстренные новости
-php artisan teg:set  # weather - погодный бот
+php artisan teg:set
+# Имя: news
+# Токен: 987654321:XYZabc...
+# Админы: 123456789,987654321
 ```
 
-### Корпоративная система
+**Результат:**
+- Файл: `app/Bots/NewsBot.php`
+- Webhook: `https://yourdomain.com/webhook/news`
 
-```bash
-# Боты для компании
-php artisan teg:set  # hr - HR отдел, вакансии
-php artisan teg:set  # it_support - техподдержка
-php artisan teg:set  # announcements - объявления
-php artisan teg:set  # booking - бронирование переговорок
+## Безопасность
+
+### Webhook Secret
+
+Каждый бот может иметь свой уникальный webhook secret:
+
+```php
+// Автоматически генерируется при создании
+$bot->webhook_secret = Str::random(32);
 ```
 
-## Мониторинг и диагностика
+### Администраторы
 
-### Системная диагностика
+У каждого бота могут быть свои администраторы:
+
+```php
+$bot->admin_ids = [123456789, 987654321];
+```
+
+### IP ограничения
+
+Глобальные IP ограничения применяются ко всем ботам:
+
+```env
+TEGBOT_ALLOWED_IPS=1.2.3.4,5.6.7.8
+```
+
+## Мониторинг
+
+### Проверка всех ботов
 
 ```bash
 php artisan teg:health
 ```
 
-**Подробный вывод для мультиботной системы:**
-
-```
-🔍 TegBot v2.0 Multi-Bot System Health Check
-
-✅ Системные компоненты:
-  ✅ PHP 8.2.0 (requirement: 8.1+)
-  ✅ Laravel 10.48.4 (requirement: 10.0+) 
-  ✅ Database: MySQL 8.0.32 (15ms connection)
-  ✅ Redis: 6.2.6 (2ms connection)
-  ✅ Storage: 15.2GB / 50GB (30% used)
-  ✅ Memory: 127MB / 2GB (6% used)
-
-✅ TegBot Infrastructure:
-  ✅ Multibot system: Enabled
-  ✅ Bot storage table: tegbot_bots (found)
-  ✅ Auto class creation: Enabled
-  ✅ Webhook base URL: https://yourdomain.com
-  ✅ Global webhook secret: Configured (32 chars)
-
-🤖 Bot Registry (4 active, 1 disabled):
-
-  ✅ shop (@myshopbot) - E-commerce
-    ├─ Status: 🟢 Active
-    ├─ Class: ✅ App\Bots\ShopBot
-    ├─ Telegram API: ✅ Valid (142ms)
-    ├─ Webhook: ✅ https://yourdomain.com/webhook/shop  
-    ├─ Secret: ✅ Individual webhook secret
-    ├─ Admins: 👥 2 configured
-    └─ Settings: 📋 5 custom parameters
-
-  ✅ support (@supportbot) - Customer Service  
-    ├─ Status: 🟢 Active
-    ├─ Class: ✅ App\Bots\SupportBot
-    ├─ Telegram API: ✅ Valid (156ms)
-    ├─ Webhook: ✅ https://yourdomain.com/webhook/support
-    ├─ Secret: ✅ Individual webhook secret  
-    ├─ Admins: 👥 3 configured
-    └─ Settings: 📋 7 custom parameters
-
-  ✅ analytics (@analyticsbot) - Business Intelligence
-    ├─ Status: 🟢 Active  
-    ├─ Class: ✅ App\Bots\AnalyticsBot
-    ├─ Telegram API: ✅ Valid (134ms)
-    ├─ Webhook: ✅ https://yourdomain.com/webhook/analytics
-    ├─ Secret: ✅ Individual webhook secret
-    ├─ Admins: 👥 1 configured (admins only)
-    └─ Settings: 📋 3 custom parameters
-
-  ✅ notifications (@notifybot) - Order Alerts
-    ├─ Status: 🟢 Active
-    ├─ Class: ✅ App\Bots\NotificationsBot  
-    ├─ Telegram API: ✅ Valid (128ms)
-    ├─ Webhook: ✅ https://yourdomain.com/webhook/notifications
-    ├─ Secret: ✅ Individual webhook secret
-    ├─ Admins: 👥 2 configured
-    └─ Settings: 📋 4 custom parameters
-
-  ⚠️  weather (@weatherbot) - Weather Service
-    ├─ Status: 🔴 Disabled (maintenance)
-    ├─ Class: ✅ App\Bots\WeatherBot
-    ├─ Telegram API: ⏸️ Skipped (bot disabled)
-    ├─ Webhook: ❌ Not configured  
-    ├─ Secret: ✅ Individual webhook secret
-    ├─ Admins: 👥 1 configured
-    └─ Settings: 📋 2 custom parameters
-
-📊 Performance Metrics (last 24h):
-  • Total messages processed: 15,247
-  • Average response time: 145ms
-  • Success rate: 99.2%
-  • Peak concurrent users: 342
-  • Webhook delivery success: 99.8%
-
-🔧 Recommendations:
-  ⚠️  Enable weather bot for full service coverage
-  💡 Consider Redis cache for better performance (file cache detected)
-  📈 Queue system recommended for high load (disabled)
-
-🎯 Overall Status: ✅ HEALTHY (4/5 bots operational)
-```
-
-### Статистика по ботам
+### Тестирование конкретного бота
 
 ```bash
-php artisan teg:stats --period=24h --detailed
+php artisan teg:bot test mybot
 ```
 
-```
-📊 TegBot v2.0 Multi-Bot Statistics (24h)
+### Метрики по ботам
 
-🏆 Top Performing Bots:
-┌─────────────┬───────────┬────────┬─────────┬──────────┬─────────────┐
-│ Bot         │ Messages  │ Users  │ Commands│ Errors   │ Avg Response│
-├─────────────┼───────────┼────────┼─────────┼──────────┼─────────────┤
-│ shop        │ 8,453     │ 1,247  │ 2,156   │ 12 (0.1%)│ 142ms       │
-│ support     │ 4,892     │ 523    │ 891     │ 3 (0.1%) │ 156ms       │
-│ analytics   │ 1,567     │ 23     │ 445     │ 0 (0%)   │ 89ms        │
-│ notifications│ 335      │ 89     │ 0       │ 1 (0.3%) │ 67ms        │
-│ weather     │ 0 (disabled)│ 0     │ 0       │ 0        │ -           │
-└─────────────┴───────────┴────────┴─────────┴──────────┴─────────────┘
-
-💬 Most Popular Commands:
-1. /start (shop) - 1,847 calls
-2. /catalog (shop) - 892 calls  
-3. /help (support) - 456 calls
-4. /order (shop) - 334 calls
-5. /status (support) - 289 calls
-
-👥 User Distribution:
-• Total unique users: 1,882
-• New users today: 156
-• Returning users: 1,726  
-• Multi-bot users: 342 (18%)
-
-🚨 Error Analysis:
-• API timeouts: 8 cases (resolved)
-• Invalid commands: 6 cases
-• Webhook delivery failures: 2 cases  
-• Rate limit hits: 1 case
+```env
+TEGBOT_METRICS_PER_BOT=true
 ```
 
-## Продвинутые возможности
+## Миграция со старой системы
 
-### Динамические настройки ботов
+### Автоматическая миграция
+
+Если у вас есть старая конфигурация в `config/tegbot.php`:
 
 ```php
-// Изменение настроек бота во время выполнения
-$bot = Bot::byName('shop')->first();
+// Старый формат
+'token' => env('TEGBOT_TOKEN'),
 
-$bot->update([
-    'settings' => array_merge($bot->settings ?? [], [
-        'maintenance_mode' => true,
-        'maintenance_message' => 'Магазин временно закрыт на техобслуживание',
-        'estimated_downtime' => '2024-12-16 02:00:00'
-    ])
+// Новый формат поддерживает оба варианта
+'token' => env('TEGBOT_TOKEN'), // для обратной совместимости
+'multibot' => [
+    'enabled' => true,
+    // новые настройки
+],
+```
+
+### Ручная миграция
+
+1. Создайте бота через команду:
+```bash
+php artisan teg:set
+```
+
+2. Используйте существующий токен из `.env`
+
+3. Обновите webhook в Telegram:
+```bash
+php artisan teg:webhook set https://yourdomain.com/webhook/mybot
+```
+
+## Troubleshooting
+
+### Бот не отвечает
+
+1. Проверьте статус бота:
+```bash
+php artisan teg:bot show mybot
+```
+
+2. Проверьте webhook:
+```bash
+php artisan teg:bot test mybot
+```
+
+3. Проверьте логи:
+```bash
+tail -f storage/logs/laravel.log | grep TegBot
+```
+
+### Класс бота не найден
+
+1. Проверьте существование файла:
+```bash
+ls -la app/Bots/
+```
+
+2. Создайте класс заново:
+```bash
+# Отредактируйте SetupCommand для пересоздания класса
+php artisan teg:set
+```
+
+### Проблемы с базой данных
+
+1. Запустите миграции:
+```bash
+php artisan migrate
+```
+
+2. Проверьте структуру таблицы:
+```bash
+php artisan tinker
+>>> Schema::hasTable('tegbot_bots')
+>>> DB::table('tegbot_bots')->count()
+```
+
+## Лучшие практики
+
+### Именование ботов
+
+- Используйте короткие осмысленные имена
+- Только латинские буквы и цифры
+- Начинайте с буквы
+- Примеры: `shop`, `news`, `support`, `analytics`
+
+### Организация кода
+
+```
+app/Bots/
+├── ShopBot.php          # Бот магазина
+├── NewsBot.php          # Новостной бот
+├── SupportBot.php       # Бот поддержки
+└── Traits/
+    ├── HasAdminCommands.php
+    └── HasUserManagement.php
+```
+
+### Конфигурация по окружениям
+
+```env
+# Development
+TEGBOT_DEBUG=true
+TEGBOT_LOG_MULTIBOT=true
+TEGBOT_AUTO_CREATE_CLASSES=true
+
+# Production
+TEGBOT_DEBUG=false
+TEGBOT_CACHE_BOT_INFO=true
+TEGBOT_AUTO_UPDATE_WEBHOOKS=false
+```
+
+## Примеры расширенной настройки
+
+### Кастомные настройки бота
+
+```php
+$bot = Bot::create([
+    'name' => 'advanced',
+    'token' => $token,
+    'settings' => [
+        'language' => 'en',
+        'timezone' => 'Europe/London',
+        'features' => ['payments', 'inline_queries'],
+        'rate_limit' => 10,
+    ]
 ]);
 ```
 
-### Интеграция с событиями
+### Использование настроек в боте
 
 ```php
-// app/Providers/EventServiceProvider.php
+class AdvancedBot extends LightBot
+{
+    private array $settings;
+
+    public function setBotConfig(array $config): void
+    {
+        $this->settings = $config['settings'] ?? [];
+    }
+
+    public function commands(): void
+    {
+        $language = $this->settings['language'] ?? 'ru';
+        
+        $this->registerCommand('start', function () use ($language) {
+            $message = $language === 'en' 
+                ? '🎉 Hello! I am advanced bot'
+                : '🎉 Привет! Я продвинутый бот';
+            
+            $this->sendSelf($message);
+        });
+    }
+}
+```
+
+## API для разработчиков
+
+### Получение бота в коде
+
+```php
+use App\Models\Bot;
+
+// По имени
+$bot = Bot::byName('mybot')->first();
+
+// По токену
+$bot = Bot::byToken($token)->first();
+
+// Только активные боты
+$activeBots = Bot::enabled()->get();
+```
+
+### Создание бота программно
+
+```php
+use App\Models\Bot;
+
+$bot = Bot::create([
+    'name' => 'automated',
+    'token' => '123456789:AABBccDD...',
+    'username' => 'automatedbot',
+    'first_name' => 'Automated Bot',
+    'bot_id' => 123456789,
+    'enabled' => true,
+    'admin_ids' => [987654321],
+    'settings' => [
+        'auto_respond' => true,
+        'language' => 'ru'
+    ]
+]);
+```
+
+### События ботов
+
+Вы можете слушать события создания/обновления ботов:
+
+```php
+// В EventServiceProvider
 use App\Models\Bot;
 
 Bot::created(function ($bot) {
-    // Автоматическая настройка при создании нового бота
     Log::info("New bot created: {$bot->name}");
     
-    // Создание директорий для бота
-    Storage::makeDirectory("bots/{$bot->name}");
-    
-    // Уведомление администраторов
-    Notification::send(
-        User::whereIn('id', $bot->admin_ids)->get(),
-        new BotCreatedNotification($bot)
-    );
+    // Отправить уведомление админам
+    // Создать директории для бота
+    // Настроить мониторинг
 });
 
 Bot::updated(function ($bot) {
     if ($bot->wasChanged('enabled')) {
         $status = $bot->enabled ? 'enabled' : 'disabled';
         Log::info("Bot {$bot->name} was {$status}");
-        
-        // Обновление webhook при изменении статуса
-        if ($bot->enabled) {
-            $bot->setupWebhook();
-        } else {
-            $bot->removeWebhook();
-        }
     }
 });
 ```
 
-### Программное управление ботами
-
-```php
-// Создание бота программно
-use App\Models\Bot;
-
-$bot = Bot::create([
-    'name' => 'automated_news',
-    'token' => '123456789:AABBccDDeeFFggHH...',
-    'username' => 'autonewsbot',
-    'first_name' => 'Automated News Bot',
-    'bot_id' => 123456789,
-    'enabled' => true,
-    'admin_ids' => [987654321],
-    'settings' => [
-        'auto_post' => true,
-        'post_interval' => 3600, // каждый час
-        'categories' => ['tech', 'business'],
-        'language' => 'ru',
-        'timezone' => 'Europe/Moscow'
-    ]
-]);
-
-// Автоматическое создание класса
-$bot->createBotClass();
-
-// Установка webhook
-$bot->setupWebhook("https://yourdomain.com/webhook/{$bot->name}");
-```
-
-## Безопасность мультиботной системы
-
-### Индивидуальные webhook секреты
-
-```php
-// Каждый бот имеет свой уникальный секрет
-$bot = Bot::find(1);
-echo $bot->webhook_secret; // "sf8h3jk9dmq2kl5nv7x1c4p6..."
-
-$anotherBot = Bot::find(2);  
-echo $anotherBot->webhook_secret; // "k9m2x5n8q1v4c7p0sf3h6jl9..."
-```
-
-### Изоляция конфигураций
-
-```php
-// Настройки одного бота не влияют на другие
-$shopBot = Bot::byName('shop')->first();
-$shopBot->settings = [
-    'payment_enabled' => true,
-    'max_order_amount' => 100000
-];
-
-$supportBot = Bot::byName('support')->first();  
-$supportBot->settings = [
-    'working_hours' => ['9:00', '18:00'],
-    'auto_assign' => true
-];
-```
-
-### Раздельные права администраторов
-
-```php
-// У каждого бота свои администраторы
-$shopBot->admin_ids = [123456789, 987654321];    // владелец + менеджер
-$supportBot->admin_ids = [987654321, 555666777]; // менеджер + оператор
-$analyticsBot->admin_ids = [123456789];          // только владелец
-```
-
-## Миграция и резервное копирование
-
-### Полный экспорт всех ботов
-
-```bash
-php artisan teg:migrate export
-```
-
-```
-💾 TegBot v2.0 Multi-Bot Export
-
-📋 Collecting bot data...
-  ✅ shop: Configuration, settings, admins
-  ✅ support: Configuration, settings, admins  
-  ✅ analytics: Configuration, settings, admins
-  ✅ notifications: Configuration, settings, admins
-  ⏸️  weather: Skipped (disabled)
-
-📦 Creating backup archive...
-  • Bot configurations: 4 entries
-  • Custom settings: 19 parameters
-  • Admin mappings: 8 unique admins
-  • Webhook configurations: 4 endpoints
-  • Class mappings: 4 bot classes
-
-✅ Export completed: storage/app/tegbot/multibot_backup_2024-12-15_163045.json
-📊 Archive size: 23.4KB
-⏱️  Export time: 0.7s
-
-💡 Restore with: php artisan teg:migrate import multibot_backup_2024-12-15_163045.json
-```
-
-### Селективный экспорт
-
-```bash
-# Экспорт только production ботов
-php artisan teg:migrate export --enabled-only
-
-# Экспорт конкретных ботов
-php artisan teg:migrate export --bots=shop,support
-
-# Экспорт с дополнительными данными
-php artisan teg:migrate export --include-logs --include-stats
-```
-
-### Импорт с проверками
-
-```bash
-php artisan teg:migrate import backup.json --validate --dry-run
-```
-
-```
-🔍 TegBot v2.0 Import Validation
-
-📁 Reading backup: backup.json
-✅ File format: Valid TegBot v2.0 export
-✅ Bot count: 4 bots found
-✅ Token format: All tokens valid format
-✅ Name conflicts: No naming conflicts detected
-
-📋 Import preview (DRY RUN):
-  🆕 shop: Will be created (new bot)
-  🔄 support: Will be updated (exists, changes detected)
-  🆕 analytics: Will be created (new bot)  
-  ⚠️  notifications: Will be skipped (disabled in backup)
-
-🎯 Summary:
-  • Will create: 2 bots
-  • Will update: 1 bot  
-  • Will skip: 1 bot
-  • Estimated time: 3.2s
-
-✅ Validation passed! Run without --dry-run to execute.
-```
-
-## Troubleshooting
-
-### Распространенные проблемы
-
-#### 1. Бот не отвечает на сообщения
-
-```bash
-# Диагностика конкретного бота
-php artisan teg:bot test shop
-
-# Проверка webhook
-php artisan teg:webhook info shop
-
-# Проверка логов
-tail -f storage/logs/laravel.log | grep -i "shop\|webhook"
-```
-
-#### 2. Класс бота не найден
-
-```bash
-# Проверка существования класса
-ls -la app/Bots/ShopBot.php
-
-# Пересоздание класса
-php artisan teg:bot regenerate-class shop
-```
-
-#### 3. Проблемы с базой данных
-
-```bash
-# Проверка таблицы ботов
-php artisan tinker
->>> DB::table('tegbot_bots')->count()
->>> DB::table('tegbot_bots')->where('enabled', true)->get()
-
-# Восстановление таблицы
-php artisan migrate:refresh --path=database/migrations/2025_01_01_000000_create_tegbot_bots_table.php
-```
-
-#### 4. Конфликты webhook
-
-```bash
-# Проверка всех webhook
-php artisan teg:webhook info --all
-
-# Массовое обновление  
-for bot in $(php artisan teg:bot list --format=json | jq -r '.[].name'); do
-    php artisan teg:webhook set $bot
-done
-```
-
-### Отладка мультиботной системы
-
-```bash
-# Включение подробного логирования
-php artisan teg:config set logging.multibot_logs true
-php artisan teg:config set logging.level debug
-
-# Мониторинг в реальном времени
-tail -f storage/logs/laravel.log | grep -E "(TegBot|webhook|multibot)"
-
-# Проверка производительности
-php artisan teg:stats --format=json | jq '.performance'
-```
-
-## Лучшие практики
-
-### Именование и организация
-
-```bash
-# Хорошие имена ботов
-shop              # E-commerce основной
-shop_b2b          # B2B версия  
-support_tier1     # Первая линия поддержки
-support_tier2     # Вторая линия поддержки
-analytics_sales   # Аналитика продаж
-analytics_users   # Аналитика пользователей
-
-# Плохие имена
-bot1, mybot, test, bot_2024_final_v2
-```
-
-### Структура проекта
-
-```
-app/Bots/
-├── Core/
-│   ├── BaseShopBot.php      # Базовый класс для магазинов
-│   ├── BaseSupportBot.php   # Базовый класс для поддержки
-│   └── BaseAnalyticsBot.php # Базовый класс для аналитики
-├── Shop/
-│   ├── ShopBot.php          # Основной магазин
-│   └── ShopB2bBot.php       # B2B магазин
-├── Support/
-│   ├── SupportTier1Bot.php  # Первая линия
-│   └── SupportTier2Bot.php  # Вторая линия
-└── Analytics/
-    ├── SalesAnalyticsBot.php  # Аналитика продаж
-    └── UsersAnalyticsBot.php  # Аналитика пользователей
-```
-
-### Мониторинг продакшена
-
-```bash
-# Cron задачи для мультиботной системы
-# Каждые 2 минуты - быстрая проверка
-*/2 * * * * php artisan teg:health --quiet --alert-on-error
-
-# Каждые 10 минут - проверка webhook
-*/10 * * * * php artisan teg:webhook test --all --quiet
-
-# Ежечасно - статистика и очистка  
-0 * * * * php artisan teg:stats --store-metrics && php artisan teg:cache clean
-
-# Ежедневно в 3:00 - полный backup
-0 3 * * * php artisan teg:migrate backup --auto --cleanup-days=30
-```
-
 ## Заключение
 
-TegBot v2.0 представляет собой революционный подход к созданию Telegram ботов:
+Мультиботная система TegBot предоставляет мощный и гибкий способ управления несколькими Telegram ботами из одного Laravel приложения. Система обеспечивает:
 
-🎯 **Основные преимущества:**
-- **Масштабируемость**: От одного до сотен ботов в одном проекте
-- **Централизация**: Единое управление всей экосистемой ботов  
-- **Безопасность**: Индивидуальная изоляция каждого бота
-- **Простота**: Автоматизация всех рутинных операций
-- **Мониторинг**: Полная видимость состояния системы
+- 🔧 **Простоту настройки** через интерактивные команды
+- 🛡️ **Безопасность** с индивидуальными webhook secret
+- 📊 **Мониторинг** каждого бота отдельно
+- 🚀 **Масштабируемость** для любого количества ботов
+- 🔄 **Обратную совместимость** со старой системой
 
-🚀 **Начните прямо сейчас:**
-
-```bash
-php artisan teg:set  # Создать первого бота
-php artisan teg:health  # Проверить систему  
-php artisan teg:stats   # Посмотреть статистику
-```
-
-TegBot v2.0 - это не просто обновление, это **новая эра** в разработке Telegram ботов! 
+Начните с команды `php artisan teg:set` и создайте своего первого бота за несколько минут! 
