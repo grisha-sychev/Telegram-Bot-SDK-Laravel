@@ -51,30 +51,30 @@ class MyBot extends AbstractBot
 {
  public function main(): void
     {
-        \$this->commands();
+        $this->commands();
         // Обрабатываем команды
-        if (\$this->hasMessageText() && \$this->isMessageCommand()) {
-            \$this->handleCommand(\$this->getMessageText());
+        if ($this->hasMessageText() && $this->isMessageCommand()) {
+            $this->handleCommand($this->getMessageText());
         }
 
 
         // Не обязательно, но рекомендуется, так как обработка автоматическая, будет просто игнорироваться
-        \$this->fail(function () {
-            \$this->sendSelf('❌ Ошибка'); // Или что то другое, на ваше усмотрение
+        $this->fail(function () {
+            $this->sendSelf('❌ Ошибка'); // Или что то другое, на ваше усмотрение
         });
     }
 
     public function commands(): void
     {
         // Регистрируем команды, description не обязательно, но рекомендуется
-        \$this->registerCommand('start', function () {
-            \$this->sendSelf('🎉 Привет! Я бот {$botName}');
+        $this->registerCommand('start', function () {
+            $this->sendSelf('🎉 Привет! Я бот {$botName}');
         }, [
             'description' => 'Запуск бота'
         ]);
 
-        \$this->registerCommand('help', function () {
-            \$this->sendSelf([
+        $this->registerCommand('help', function () {
+            $this->sendSelf([
                 '📋 Доступные команды:', 
                 '', 
                 '/start - Запуск бота', 
