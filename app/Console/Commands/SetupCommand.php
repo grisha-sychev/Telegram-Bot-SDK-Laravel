@@ -28,7 +28,7 @@ class SetupCommand extends Command
         }
 
         // Проверяем токен и получаем информацию о боте
-        $apiHost = $botData['api_host'] ?: $this->option('api-host') ?: 'https://api.telegram.org';
+        $apiHost = $this->option('api-host') ?: 'https://api.telegram.org';
         $noSsl = $botData['no_ssl'] ?? $this->option('no-ssl') ?? false;
         $botInfo = $this->getBotInfo($botData['token'], $apiHost, $noSsl);
         if (!$botInfo) {
@@ -161,24 +161,19 @@ class SetupCommand extends Command
             $adminIdsArray = array_map('intval', $adminIdsArray);
         }
 
-        $this->newLine();
-        $this->info('🔧 Дополнительные настройки (опционально)');
-
-        // Запрашиваем кастомный API хост (опционально)
-        $defaultApiHost = 'https://api.telegram.org';
-        $apiHost = $this->ask('API хост для обхода SSL/блокировок', $this->option('api-host') ?: $defaultApiHost);
-        if ($apiHost === $defaultApiHost) {
-            $apiHost = null; // Используем значение по умолчанию
-        }
-
         // Запрашиваем отключение SSL проверки (опционально)
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
 
-        // Запрашиваем webhook URL (опционально) 
-        $defaultWebhookUrl = url("/webhook/{$name}");
-        $webhookUrl = $this->ask('Webhook URL (Enter = автогенерация)', $this->option('webhook') ?: '');
-        if (empty($webhookUrl)) {
-            $webhookUrl = null; // Пусть setupWebhook сам сгенерирует
+        // Запрашиваем домен для webhook (опционально) 
+        $webhookUrl = $this->option('webhook');
+        if (!$webhookUrl) {
+            $defaultDomain = parse_url(url('/'), PHP_URL_SCHEME) . '://' . parse_url(url('/'), PHP_URL_HOST);
+            $domain = $this->ask('Домен для webhook (Enter = текущий домен)', $defaultDomain);
+            if ($domain) {
+                $webhookUrl = rtrim($domain, '/') . "/webhook/{$name}";
+            } else {
+                $webhookUrl = null;
+            }
         }
 
         return [
@@ -186,7 +181,6 @@ class SetupCommand extends Command
             'token' => $token,
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
-            'api_host' => $apiHost,
             'webhook_url' => $webhookUrl,
             'no_ssl' => $noSsl,
         ];
@@ -202,7 +196,7 @@ class SetupCommand extends Command
 
         try {
             $url = rtrim($apiHost, '/') . "/bot{$token}/getMe";
-            
+
             $http = Http::timeout(10);
             if ($noSsl) {
                 $http = $http->withOptions([
@@ -213,9 +207,9 @@ class SetupCommand extends Command
                     ]
                 ]);
             }
-            
+
             $response = $http->get($url);
-            
+
             if ($response->successful()) {
                 $this->info('✅ Токен бота валиден');
                 return $response->json()['result'];
@@ -235,11 +229,11 @@ class SetupCommand extends Command
         $this->line("  📝 Имя: {$botInfo['first_name']}");
         $this->line("  🆔 Username: @{$botInfo['username']}");
         $this->line("  📡 ID: {$botInfo['id']}");
-        
+
         if (isset($botInfo['description'])) {
             $this->line("  📄 Описание: {$botInfo['description']}");
         }
-        
+
         $this->newLine();
     }
 
@@ -281,26 +275,26 @@ class SetupCommand extends Command
 
 namespace App\\Bots;
 
-use Teg\\LightBot;
-
-class {$className} extends LightBot
+class {$className} extends AbstractBot
 {
     public function main(): void
     {
-        // Регистрируем команды
         \$this->commands();
-        
-        // Обрабатываем входящие сообщения
+        // Обрабатываем команды
         if (\$this->hasMessageText() && \$this->isMessageCommand()) {
-            \$this->handleCommand(\$this->getMessageText);
-        } else {
-            // Если это не команда, вызываем fallback
-            \$this->fallback();
+            \$this->handleCommand(\$this->getMessageText());
         }
+
+
+        // Не обязательно, но рекомендуется, так как обработка автоматическая, будет просто игнорироваться
+        \$this->fail(function () {
+            \$this->sendSelf('❌ Ошибка'); // Или что то другое, на ваше усмотрение
+        });
     }
 
     public function commands(): void
     {
+        // Регистрируем команды, description не обязательно, но рекомендуется
         \$this->registerCommand('start', function () {
             \$this->sendSelf('🎉 Привет! Я бот {$botName}');
         }, [
@@ -314,10 +308,6 @@ class {$className} extends LightBot
         ]);
     }
 
-    public function fallback(): void
-    {
-        \$this->sendSelf('❓ Неизвестная команда. Используйте /help для получения справки.');
-    }
 }
 ";
 
@@ -346,18 +336,18 @@ class {$className} extends LightBot
             $this->error('❌ Неверный формат URL');
             return;
         }
-        
+
         // Проверяем HTTPS (кроме локальных адресов или если указан --force)
-        $isLocal = str_contains($webhookUrl, 'localhost') || 
-                   str_contains($webhookUrl, '127.0.0.1') || 
-                   str_contains($webhookUrl, '192.168.') ||
-                   str_contains($webhookUrl, '.local');
-                   
+        $isLocal = str_contains($webhookUrl, 'localhost') ||
+            str_contains($webhookUrl, '127.0.0.1') ||
+            str_contains($webhookUrl, '192.168.') ||
+            str_contains($webhookUrl, '.local');
+
         if (!str_starts_with($webhookUrl, 'https://') && !$isLocal && !$this->option('force')) {
             $this->error('❌ URL должен быть HTTPS (используйте --force для обхода)');
             return;
         }
-        
+
         if (!str_starts_with($webhookUrl, 'https://') && ($isLocal || $this->option('force'))) {
             $this->warn('⚠️  Используется HTTP соединение (только для разработки!)');
         }
@@ -371,7 +361,7 @@ class {$className} extends LightBot
         if ($noSsl) {
             $this->warn('  ⚠️  SSL проверка отключена');
         }
-        
+
         try {
             $payload = [
                 'url' => $webhookUrl,
@@ -389,7 +379,7 @@ class {$className} extends LightBot
             }
 
             $url = rtrim($apiHost, '/') . "/bot{$bot->token}/setWebhook";
-            
+
             $http = Http::timeout(30);
             if ($noSsl) {
                 $http = $http->withOptions([
@@ -400,9 +390,9 @@ class {$className} extends LightBot
                     ]
                 ]);
             }
-            
+
             $response = $http->post($url, $payload);
-            
+
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД
                 $bot->update([
@@ -427,10 +417,10 @@ class {$className} extends LightBot
         $this->info('⚙️  Проверка конфигурации...');
 
         $configPath = config_path('tegbot.php');
-        
+
         if (!file_exists($configPath)) {
             $this->warn('⚠️  Конфигурационный файл не найден');
-            
+
             if ($this->confirm('Опубликовать конфигурацию?', true)) {
                 $this->call('vendor:publish', [
                     '--provider' => 'Teg\Providers\TegbotServiceProvider',
@@ -465,4 +455,4 @@ class {$className} extends LightBot
             }
         }
     }
-} 
+}
