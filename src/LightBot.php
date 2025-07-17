@@ -743,7 +743,7 @@ class LightBot extends Skeleton
         
         $currentMediaType = $this->getMessageType();
         
-        if ($currentMediaType === $mediaType) {
+        if ($currentMediaType === $mediaType->value) {
             $this->messageProcessed = true;
             if ($callback instanceof \Closure) {
                 $callback = $callback->bindTo($this, $this);
