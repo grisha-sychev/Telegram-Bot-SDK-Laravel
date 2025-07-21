@@ -1,5 +1,5 @@
 {
-    "name": "tegbot/tegbot",
+    "name": "tbot/laravel",
     "description": "Telergam bot SDK package",
     "type": "library",
     "license": "MIT",
