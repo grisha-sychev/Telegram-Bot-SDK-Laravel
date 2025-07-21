@@ -848,7 +848,7 @@ class LightBot extends Skeleton
      * @param callable $callback Функция-обработчик
      * @return static
      */
-    public function fail(callable $callback): static
+    public function fallback(callable $callback): static
     {
         $this->failCallback = $callback;
         return $this;
@@ -1163,7 +1163,7 @@ class LightBot extends Skeleton
      * Метод отправки сообщения другому пользователю
      *
      * @param int $id Идентификатор пользователя.
-     * @param string $message Текст сообщения.
+     * @param array|string $message Текст сообщения.
      * @param array|null $keyboard Клавиатура для сообщения (необязательно).
      * @param int $layout Число делений или массив с ручным расположением.
      * @param int $type_keyboard Тип каливатуры 0 - keyboard 1 - inlineKeyboard
