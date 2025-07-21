@@ -17,7 +17,7 @@
 ### 1. Установка
 
 ```bash
-composer require tegbot/tegbot
+composer require tbot/laravel
 ```
 
 ### 2. Публикация файлов
