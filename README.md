@@ -59,7 +59,7 @@ class MyBot extends AbstractBot
 
 
         // Не обязательно, но рекомендуется, так как обработка автоматическая, будет просто игнорироваться
-        $this->fail(function () {
+        $this->fallback(function () {
             $this->sendSelf('❌ Ошибка'); // Или что то другое, на ваше усмотрение
         });
     }
