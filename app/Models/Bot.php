@@ -9,7 +9,7 @@ class Bot extends Model
 {
     use HasFactory;
 
-    protected $table = 'tegbot_bots';
+    protected $table = 'bots';
 
     protected $fillable = [
         'name',

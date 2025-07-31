@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Http;
 
 class BotCommand extends Command
 {
-    protected $signature = 'teg:bot 
+    protected $signature = 'bot:manage 
                             {action : Action (list, show, enable, disable, delete, test)}
                             {bot? : Bot name or ID}
                             {--format=table : Output format (table, json)}';
     
-    protected $description = 'Управление мультиботами TegBot';
+    protected $description = 'Управление ботами';
 
     public function handle()
     {
@@ -46,7 +46,7 @@ class BotCommand extends Command
 
             if ($bots->isEmpty()) {
                 $this->info('📭 Боты не найдены');
-                $this->line('Используйте команду: php artisan teg:set');
+                $this->line('Используйте команду: php artisan bot:new');
                 return 0;
             }
 

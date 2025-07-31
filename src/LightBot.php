@@ -1420,7 +1420,7 @@ class LightBot extends Skeleton
      * @param int $layout Число делений или массив с ручным расположением.
      * 
      */
-    public function editReplyMarkupSelf($message_id, $keyboard = null, $layout = 2)
+    public function editReplyMarkupSelf($message_id, $keyboard = [], $layout = 2)
     {
         return $this->editReplyMarkupOut($this->getUserId(), $message_id, $keyboard, $layout);
     }

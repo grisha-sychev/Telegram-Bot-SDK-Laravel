@@ -8,10 +8,9 @@ use Illuminate\Support\Str;
 
 class WebhookCommand extends Command
 {
-    protected $signature = 'teg:webhook 
+    protected $signature = 'bot:webhook 
                             {action : Action (set, info, delete, test)}
                             {url? : Webhook URL (for set action)}
-                            {--bot= : Bot name from database}
                             {--secret= : Webhook secret token}
                             {--max-connections=40 : Max webhook connections}
                             {--no-ssl : Disable SSL verification}
@@ -22,43 +21,22 @@ class WebhookCommand extends Command
     public function handle()
     {
         $action = $this->argument('action');
-        $botName = $this->option('bot');
-        
-        // Если бот не указан, предлагаем выбрать из списка
-        if (!$botName) {
-            $botName = $this->selectBot();
-            if (!$botName) {
-                return 1;
-            }
-        }
-        
-        // Получаем бота из базы данных
-        $bot = \App\Models\Bot::byName($botName)->first();
-        if (!$bot) {
-            $this->error("❌ Бот '{$botName}' не найден в базе данных");
-            $this->showAvailableBots();
+        $token = config('tegbot.token', env('TEGBOT_TOKEN'));
+
+        if (!$token) {
+            $this->error('❌ TEGBOT_TOKEN не настроен');
             return 1;
         }
-        
-        if (!$bot->enabled) {
-            $this->error("❌ Бот '{$botName}' отключен");
-            return 1;
-        }
-        
-        $token = $bot->token;
-        
-        $this->info("🤖 Работаем с ботом: {$bot->name} (@{$bot->username})");
-        $this->newLine();
 
         switch ($action) {
             case 'set':
-                return $this->setWebhook($token, $bot);
+                return $this->setWebhook($token);
             case 'info':
-                return $this->getWebhookInfo($token, $bot);
+                return $this->getWebhookInfo($token);
             case 'delete':
-                return $this->deleteWebhook($token, $bot);
+                return $this->deleteWebhook($token);
             case 'test':
-                return $this->testWebhook($token, $bot);
+                return $this->testWebhook($token);
             default:
                 $this->error("Неизвестное действие: {$action}");
                 $this->line('Доступные действия: set, info, delete, test');
@@ -66,7 +44,7 @@ class WebhookCommand extends Command
         }
     }
 
-    private function setWebhook(string $token, \App\Models\Bot $bot): int
+    private function setWebhook(string $token): int
     {
         $url = $this->argument('url');
         
@@ -91,14 +69,15 @@ class WebhookCommand extends Command
         }
 
         // Подготавливаем параметры
-        $secret = $this->option('secret') ?? $bot->webhook_secret;
+        $secret = $this->option('secret') ?? config('tegbot.security.webhook_secret', env('TEGBOT_WEBHOOK_SECRET'));
         $maxConnections = $this->option('max-connections');
 
         if (!$secret) {
             if ($this->confirm('Генерировать webhook secret автоматически?', true)) {
-                $secret = \Illuminate\Support\Str::random(32);
+                $secret = Str::random(32);
                 $this->warn("💡 Сгенерирован secret: {$secret}");
-                $this->warn('Secret будет сохранен в базе данных');
+                $this->warn('Добавьте в .env файл:');
+                $this->line("TEGBOT_WEBHOOK_SECRET={$secret}");
                 $this->newLine();
             }
         }
@@ -154,20 +133,12 @@ class WebhookCommand extends Command
                 $result = $response->json();
                 
                 if ($result['ok']) {
-                    // Сохраняем webhook данные в БД
-                    $bot->update([
-                        'webhook_url' => $url,
-                        'webhook_secret' => $secret,
-                    ]);
-                    
                     $this->info('✅ Webhook установлен успешно');
-                    $this->line("  🌐 URL: {$url}");
-                    $this->line("  🔐 Secret: {$secret}");
                     
                     // Проверяем сразу
                     $this->newLine();
                     $this->info('🔍 Проверка webhook...');
-                    $this->getWebhookInfo($token, $bot);
+                    $this->getWebhookInfo($token);
                 } else {
                     $this->error('❌ Ошибка: ' . ($result['description'] ?? 'Unknown error'));
                     return 1;
@@ -184,7 +155,7 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function getWebhookInfo(string $token, \App\Models\Bot $bot): int
+    private function getWebhookInfo(string $token): int
     {
         try {
             $http = Http::timeout(10);
@@ -223,7 +194,7 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function deleteWebhook(string $token, \App\Models\Bot $bot): int
+    private function deleteWebhook(string $token): int
     {
         if (!$this->option('force') && !$this->confirm('⚠️  Удалить webhook?', false)) {
             $this->info('Отменено');
@@ -266,7 +237,7 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function testWebhook(string $token, \App\Models\Bot $bot): int
+    private function testWebhook(string $token): int
     {
         $this->info('🧪 Тестирование webhook...');
         $this->newLine();
@@ -335,7 +306,7 @@ class WebhookCommand extends Command
             $this->displayWebhookInfo($info);
 
             // Проверка 4: Отправка тестового запроса (если есть secret)
-            $secret = $bot->webhook_secret;
+            $secret = config('tegbot.security.webhook_secret', env('TEGBOT_WEBHOOK_SECRET'));
             if ($secret) {
                 $this->newLine();
                 $this->line('🧪 Отправка тестового запроса...');
@@ -488,52 +459,6 @@ class WebhookCommand extends Command
             
         } catch (\Exception $e) {
             $this->error("  ❌ Ошибка отправки: {$e->getMessage()}");
-        }
-    }
-    
-    private function selectBot(): ?string
-    {
-        try {
-            $bots = \App\Models\Bot::enabled()->get();
-            
-            if ($bots->isEmpty()) {
-                $this->error('❌ Нет активных ботов в базе данных');
-                $this->line('💡 Используйте команду: php artisan teg:setup');
-                return null;
-            }
-            
-            if ($bots->count() === 1) {
-                $bot = $bots->first();
-                $this->info("🤖 Выбран единственный бот: {$bot->name}");
-                return $bot->name;
-            }
-            
-            $choices = $bots->pluck('name')->toArray();
-            $choice = $this->choice('Выберите бота:', $choices);
-            
-            return $choice;
-            
-        } catch (\Exception $e) {
-            $this->error('❌ Ошибка получения списка ботов: ' . $e->getMessage());
-            return null;
-        }
-    }
-    
-    private function showAvailableBots(): void
-    {
-        try {
-            $bots = \App\Models\Bot::all();
-            if ($bots->isNotEmpty()) {
-                $this->line('💡 Доступные боты:');
-                foreach ($bots as $bot) {
-                    $status = $bot->enabled ? '✅' : '❌';
-                    $this->line("   {$status} {$bot->name} (@{$bot->username})");
-                }
-            } else {
-                $this->line('   (нет зарегистрированных ботов)');
-            }
-        } catch (\Exception $e) {
-            $this->warn('⚠️  Не удалось получить список ботов');
         }
     }
 } 

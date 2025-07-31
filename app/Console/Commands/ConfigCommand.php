@@ -7,13 +7,13 @@ use Illuminate\Support\Arr;
 
 class ConfigCommand extends Command
 {
-    protected $signature = 'teg:config 
+    protected $signature = 'bot:config 
                             {action? : Action (show, get, set, reset)}
                             {key? : Configuration key}
                             {value? : Configuration value}
                             {--format=table : Output format (table, json, yaml)}';
     
-    protected $description = 'Управление конфигурацией TegBot';
+    protected $description = 'Управление конфигурацией бота';
 
     public function handle()
     {
@@ -39,7 +39,7 @@ class ConfigCommand extends Command
 
     private function showConfig(): int
     {
-        $this->info('⚙️  TegBot Configuration');
+        $this->info('⚙️  Bot Configuration');
         $this->newLine();
 
         $config = config('tegbot', []);
@@ -148,7 +148,7 @@ class ConfigCommand extends Command
 
     private function validateConfig(): int
     {
-        $this->info('🔍 Валидация конфигурации TegBot...');
+        $this->info('🔍 Валидация конфигурации бота...');
         $this->newLine();
 
         $errors = [];

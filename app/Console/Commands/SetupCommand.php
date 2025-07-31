@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 class SetupCommand extends Command
 {
-    protected $signature = 'teg:set {--webhook= : Webhook URL} {--api-host= : Custom API host} {--no-ssl : Disable SSL verification} {--force : Force setup without confirmation}';
-    protected $description = 'Настройка TegBot с поддержкой мультибота';
+    protected $signature = 'bot:new {--webhook= : Webhook URL} {--api-host= : Custom API host} {--no-ssl : Disable SSL verification} {--force : Force setup without confirmation}';
+    protected $description = 'Настройка бота';
 
     public function handle()
     {
-        $this->info('🚀 TegBot Multi-Bot Setup Wizard');
+        $this->info('🚀 Bot Setup Wizard');
         $this->newLine();
 
         // Показываем существующие боты
@@ -67,10 +67,10 @@ class SetupCommand extends Command
         $this->createDirectories();
 
         $this->newLine();
-        $this->info('✅ Настройка TegBot завершена!');
+        $this->info('✅ Настройка бота завершена!');
         $this->line("🤖 Бот '{$bot->name}' успешно добавлен");
         $this->line('📖 Документация: vendor/tegbot/tegbot/docs/');
-        $this->line('🔍 Проверка: php artisan teg:health');
+        $this->line('🔍 Проверка: php artisan bot:health');
 
         return 0;
     }
@@ -287,7 +287,7 @@ class {$className} extends AbstractBot
 
 
         // Не обязательно, но рекомендуется, так как обработка автоматическая, будет просто игнорироваться
-        \$this->fail(function () {
+        \$this->fallback(function () {
             \$this->sendSelf('❌ Ошибка'); // Или что то другое, на ваше усмотрение
         });
     }

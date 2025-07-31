@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tegbot_bots', function (Blueprint $table) {
+        Schema::create('bots', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique()->comment('Уникальное имя бота');
             $table->string('token')->unique()->comment('Токен бота от BotFather');
@@ -36,6 +36,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('tegbot_bots');
+        Schema::dropIfExists('bots');
     }
 }; 

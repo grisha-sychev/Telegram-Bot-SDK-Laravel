@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class StatsCommand extends Command
 {
-    protected $signature = 'teg:stats 
+    protected $signature = 'bot:stats 
                             {--period=24h : Period for statistics (1h, 24h, 7d, 30d)}
                             {--format=table : Output format (table, json)}
                             {--detailed : Show detailed statistics}';
@@ -18,7 +18,7 @@ class StatsCommand extends Command
 
     public function handle()
     {
-        $this->info('📊 TegBot Statistics');
+        $this->info('📊 Bot Statistics');
         $this->newLine();
 
         $period = $this->option('period');

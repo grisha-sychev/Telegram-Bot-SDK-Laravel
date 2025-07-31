@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\File;
 
 class MigrateCommand extends Command
 {
-    protected $signature = 'teg:migrate 
+    protected $signature = 'bot:migrate 
                             {action : Action (export, import, clear, backup)}
                             {--format=json : Export format (json, csv)}
                             {--path= : File path for import/export}
                             {--force : Force action without confirmation}';
     
-    protected $description = 'Миграция данных TegBot';
+    protected $description = 'Миграция данных ботов';
 
     public function handle()
     {
@@ -39,7 +39,7 @@ class MigrateCommand extends Command
 
     private function exportData(): int
     {
-        $this->info('📤 Экспорт данных TegBot...');
+        $this->info('📤 Экспорт данных ботов...');
         $this->newLine();
 
         $format = $this->option('format');
@@ -112,7 +112,7 @@ class MigrateCommand extends Command
 
     private function clearData(): int
     {
-        $this->warn('⚠️  ВНИМАНИЕ: Эта операция удалит все данные TegBot!');
+        $this->warn('⚠️  ВНИМАНИЕ: Эта операция удалит все данные ботов!');
         $this->newLine();
 
         if (!$this->option('force')) {
@@ -140,7 +140,7 @@ class MigrateCommand extends Command
             // Очищаем логи
             $this->clearLogs();
 
-            $this->info('✅ Все данные TegBot удалены');
+            $this->info('✅ Все данные ботов удалены');
 
         } catch (\Exception $e) {
             $this->error("❌ Ошибка очистки: {$e->getMessage()}");
