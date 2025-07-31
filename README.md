@@ -35,7 +35,7 @@ php artisan migrate
 ### 4. Создание первого бота
 
 ```bash
-php artisan teg:set
+php artisan bot:new
 ```
 
 Команда проведет вас через интерактивную настройку - просто введите токен от @BotFather!
@@ -199,12 +199,12 @@ php artisan teg:health
 ### Статистика ботов
 
 ```bash
-php artisan teg:stats
+php artisan bot:stats
 ```
 
 ## ⚙️ Конфигурация
 
-Файл `config/tegbot.php` содержит все настройки:
+Файл `config/bot.php` содержит все настройки:
 
 ```php
 return [
