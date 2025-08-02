@@ -18,9 +18,23 @@
 ```bash
 composer require tbot/laravel
 ```
+
+### Публикация файлов
+
 ```bash
-php artisan vendor:publish --provider="Bot\Providers\BotServiceProvider"
+# Стандартная публикация (пропускает существующие файлы)
+php artisan bot:publish
+
+# Публикация с принудительным обновлением
+php artisan bot:publish --force
+
+# Публикация конкретных компонентов
+php artisan bot:publish --tag=bot-config --force
+php artisan bot:publish --tag=bot-app --force
 ```
+
+### Миграции
+
 ```bash
 php artisan migrate
 ```
@@ -88,6 +102,34 @@ php artisan bot:webhook delete mybot
 
 # Тестирование webhook
 php artisan bot:webhook test mybot
+```
+
+### 5. Управление окружениями
+
+```bash
+# Переключение на dev окружение
+php artisan bot:env dev
+
+# Переключение на prod окружение
+php artisan bot:env prod
+
+# Сброс к значению из env файла
+php artisan bot:env dev --reset
+```
+
+### 6. Публикация файлов
+
+```bash
+# Публикация всех файлов
+php artisan bot:publish
+
+# Принудительное обновление всех файлов
+php artisan bot:publish --force
+
+# Обновление конкретных компонентов
+php artisan bot:publish --tag=bot-config --force
+php artisan bot:publish --tag=bot-app --force
+php artisan bot:publish --tag=bot-routes --force
 ```
 
 ## Разделение окружений

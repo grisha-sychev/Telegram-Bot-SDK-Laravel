@@ -14,7 +14,8 @@ class StatsCommand extends Command
                             {--bot= : Имя конкретного бота для статистики}
                             {--period=24h : Period for statistics (1h, 24h, 7d, 30d)}
                             {--format=table : Output format (table, json)}
-                            {--detailed : Show detailed statistics}';
+                            {--detailed : Show detailed statistics}
+                            {--no-ssl : Отключить проверку SSL сертификатов}';
     
     protected $description = 'Статистика Bot';
 
@@ -173,7 +174,18 @@ class StatsCommand extends Command
         $token = $bot->getTokenForEnvironment($currentEnvironment);
 
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            if ($this->option('no-ssl')) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
             
             if ($response->successful()) {
                 $webhook = $response->json()['result'];

@@ -169,8 +169,25 @@ class WebhookCommand extends Command
         $this->line("🌐 URL: {$url}");
         $this->line("🌍 Окружение: {$currentEnvironment}");
 
+        // Проверяем SSL настройки
+        $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
-            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+            $http = Http::timeout(30);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
 
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД (относительный путь)
@@ -203,8 +220,25 @@ class WebhookCommand extends Command
     {
         $this->info("🔍 Получение информации о webhook для бота '{$bot->name}'...");
 
+        // Проверяем SSL настройки
+        $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
 
             if ($response->successful()) {
                 $info = $response->json()['result'];
@@ -230,8 +264,25 @@ class WebhookCommand extends Command
             return 0;
         }
 
+        // Проверяем SSL настройки
+        $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->post("https://api.telegram.org/bot{$token}/deleteWebhook");
 
             if ($response->successful()) {
                 // Очищаем webhook данные в БД
@@ -258,8 +309,25 @@ class WebhookCommand extends Command
     {
         $this->info("🧪 Тестирование webhook для бота '{$bot->name}'...");
 
+        // Проверяем SSL настройки
+        $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
 
             if ($response->successful()) {
                 $info = $response->json()['result'];
@@ -533,8 +601,25 @@ class WebhookCommand extends Command
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
 
+        // Проверяем SSL настройки
+        $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
 
             if ($response->successful()) {
                 $info = $response->json()['result'];

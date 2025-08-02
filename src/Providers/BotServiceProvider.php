@@ -97,6 +97,11 @@ class BotServiceProvider extends ServiceProvider
             ];
 
             $this->publishes($pathsToPublish, 'bot');
+            
+            // Регистрируем команду публикации
+            $this->commands([
+                \App\Console\Commands\PublishCommand::class,
+            ]);
         }
     }
 

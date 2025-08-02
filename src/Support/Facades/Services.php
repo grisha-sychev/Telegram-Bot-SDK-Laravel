@@ -34,7 +34,13 @@ class Services
         try {
             // Получаем токен из базы данных
             $botModel = \App\Models\Bot::byName($bot)->where('enabled', true)->first();
-            return $botModel ? $botModel->token : null;
+            if (!$botModel) {
+                return null;
+            }
+            
+            // Получаем токен для текущего окружения
+            $currentEnvironment = \App\Models\Bot::getCurrentEnvironment();
+            return $botModel->getTokenForEnvironment($currentEnvironment);
         } catch (\Exception $e) {
             return null;
         }

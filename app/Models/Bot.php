@@ -41,11 +41,35 @@ class Bot extends Model
     ];
 
     /**
-     * Получить текущее окружение из env
+     * Статическое свойство для хранения текущего окружения
+     */
+    private static ?string $currentEnvironment = null;
+
+    /**
+     * Получить текущее окружение из env или статического свойства
      */
     public static function getCurrentEnvironment(): string
     {
+        if (self::$currentEnvironment !== null) {
+            return self::$currentEnvironment;
+        }
         return env('APP_ENV', 'dev');
+    }
+
+    /**
+     * Установить текущее окружение
+     */
+    public static function setCurrentEnvironment(string $environment): void
+    {
+        self::$currentEnvironment = $environment;
+    }
+
+    /**
+     * Сбросить текущее окружение к значению из env
+     */
+    public static function resetCurrentEnvironment(): void
+    {
+        self::$currentEnvironment = null;
     }
 
     /**

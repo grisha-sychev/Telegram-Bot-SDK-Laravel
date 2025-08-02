@@ -11,7 +11,8 @@ class BotCommand extends Command
     protected $signature = 'bot:manage 
                             {action : Action (list, show, enable, disable, delete, test)}
                             {bot? : Bot name or ID}
-                            {--format=table : Output format (table, json)}';
+                            {--format=table : Output format (table, json)}
+                            {--no-ssl : Отключить проверку SSL сертификатов}';
     
     protected $description = 'Управление ботами';
 
@@ -282,6 +283,13 @@ class BotCommand extends Command
             $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info("🧪 Тестирование бота '{$bot->name}'...");
             $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+
+            // Проверяем SSL настройки
+            $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
+            if ($noSsl) {
+                $this->warn('⚠️  SSL проверка отключена');
+            }
+
             $this->newLine();
 
             // Проверяем наличие токена для текущего окружения
@@ -294,7 +302,19 @@ class BotCommand extends Command
             $this->line('1. Проверка API подключения...');
             try {
                 $token = $bot->getTokenForEnvironment($currentEnvironment);
-                $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
+                
+                $http = Http::timeout(10);
+                if ($noSsl) {
+                    $http = $http->withOptions([
+                        'verify' => false,
+                        'curl' => [
+                            CURLOPT_SSL_VERIFYPEER => false,
+                            CURLOPT_SSL_VERIFYHOST => false,
+                        ]
+                    ]);
+                }
+                
+                $response = $http->get("https://api.telegram.org/bot{$token}/getMe");
                 
                 if ($response->successful()) {
                     $botInfo = $response->json()['result'];
@@ -323,7 +343,19 @@ class BotCommand extends Command
             if ($bot->webhook_url) {
                 try {
                     $token = $bot->getTokenForEnvironment($currentEnvironment);
-                    $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+                    
+                    $http = Http::timeout(10);
+                    if ($noSsl) {
+                        $http = $http->withOptions([
+                            'verify' => false,
+                            'curl' => [
+                                CURLOPT_SSL_VERIFYPEER => false,
+                                CURLOPT_SSL_VERIFYHOST => false,
+                            ]
+                        ]);
+                    }
+                    
+                    $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
                     
                     if ($response->successful()) {
                         $webhookInfo = $response->json()['result'];

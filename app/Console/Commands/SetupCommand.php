@@ -213,19 +213,11 @@ class SetupCommand extends Command
         // Запрашиваем отключение SSL проверки (опционально)
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
 
-        // Автоматически определяем домен для webhook на основе текущего окружения
+        // Автоматически определяем относительный путь для webhook
         $webhookUrl = $this->option('webhook');
         if (!$webhookUrl) {
-            $currentEnvironment = Bot::getCurrentEnvironment();
-            $currentDomain = $currentEnvironment === 'prod' ? $prodDomain : $devDomain;
-            
-            if ($currentDomain) {
-                $webhookUrl = rtrim($currentDomain, '/') . "/webhook/{$name}";
-                $this->info("🌐 Webhook URL будет: {$webhookUrl}");
-            } else {
-                $this->warn("⚠️  Домен для окружения '{$currentEnvironment}' не указан, webhook не будет настроен");
-                $webhookUrl = null;
-            }
+            $webhookUrl = "/webhook/{$name}";
+            $this->info("🌐 Webhook URL будет: {$webhookUrl}");
         }
 
         return [
