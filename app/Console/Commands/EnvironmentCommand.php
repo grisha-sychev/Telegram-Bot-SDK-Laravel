@@ -58,15 +58,15 @@ class EnvironmentCommand extends Command
     private function showActiveBots(string $environment): void
     {
         $this->newLine();
-        $this->info("🤖 Активные боты для окружения '{$environment}':");
+        $this->info("🤖 Изолированные боты для окружения '{$environment}':");
         
-        $bots = Bot::enabled()
-            ->withTokenForEnvironment($environment)
-            ->withDomainForEnvironment($environment)
-            ->get();
+        $bots = Bot::getBotsForEnvironment($environment);
         
         if ($bots->isEmpty()) {
-            $this->warn("⚠️  Нет активных ботов для окружения '{$environment}'");
+            $this->warn("⚠️  Нет изолированных ботов для окружения '{$environment}'");
+            $this->line("💡 Бот считается изолированным если у него есть:");
+            $this->line("   - Токен для окружения '{$environment}'");
+            $this->line("   - Домен для окружения '{$environment}'");
             return;
         }
         
@@ -76,12 +76,13 @@ class EnvironmentCommand extends Command
                 $bot->name,
                 $bot->getMaskedTokenForEnvironment($environment),
                 $bot->getDomainForEnvironment($environment),
-                $bot->webhook_url ?: 'Не настроен'
+                $bot->webhook_url ?: 'Не настроен',
+                $bot->isIsolatedForEnvironment($environment) ? '✅' : '❌'
             ];
         }
         
         $this->table(
-            ['Имя', 'Токен', 'Домен', 'Webhook URL'],
+            ['Имя', 'Токен', 'Домен', 'Webhook URL', 'Изолирован'],
             $table
         );
     }

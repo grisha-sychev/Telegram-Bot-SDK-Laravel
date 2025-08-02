@@ -74,6 +74,8 @@ class Bot extends Model
 
     /**
      * Получить токен для текущего окружения
+     * ВАЖНО: Этот метод используется только для совместимости
+     * Для webhook используйте getTokenForEnvironment() с конкретным окружением
      */
     public function getTokenAttribute(): ?string
     {
@@ -253,5 +255,34 @@ class Bot extends Model
         }
         
         return rtrim($domain, '/') . $this->webhook_url;
+    }
+
+    /**
+     * Проверить изоляцию бота - что он работает только в своем окружении
+     */
+    public function isIsolatedForEnvironment(string $environment): bool
+    {
+        // Проверяем, что у бота есть токен для этого окружения
+        if (!$this->hasTokenForEnvironment($environment)) {
+            return false;
+        }
+        
+        // Проверяем, что у бота есть домен для этого окружения
+        if (!$this->hasDomainForEnvironment($environment)) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Получить список ботов для конкретного окружения
+     */
+    public static function getBotsForEnvironment(string $environment): \Illuminate\Database\Eloquent\Collection
+    {
+        return self::enabled()
+            ->withTokenForEnvironment($environment)
+            ->withDomainForEnvironment($environment)
+            ->get();
     }
 } 
