@@ -379,24 +379,43 @@ class {$className} extends AbstractBot
             return;
         }
 
+        // Получаем текущее окружение
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        
+        // Используем правильный webhook URL с учетом окружения
+        $environmentWebhookUrl = $bot->getWebhookUrlForEnvironment($currentEnvironment);
+        
+        // Определяем полный webhook URL
+        $fullWebhookUrl = '';
+        if (filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
+            $fullWebhookUrl = $webhookUrl;
+        } else {
+            $domain = $bot->getDomainForEnvironment($currentEnvironment);
+            if (!$domain) {
+                $this->error("❌ Домен для окружения '{$currentEnvironment}' не настроен");
+                return;
+            }
+            $fullWebhookUrl = rtrim($domain, '/') . $environmentWebhookUrl;
+        }
+
         // Проверяем URL
-        if (!filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
+        if (!filter_var($fullWebhookUrl, FILTER_VALIDATE_URL)) {
             $this->error('❌ Неверный формат URL');
             return;
         }
 
         // Проверяем HTTPS (кроме локальных адресов или если указан --force)
-        $isLocal = str_contains($webhookUrl, 'localhost') ||
-            str_contains($webhookUrl, '127.0.0.1') ||
-            str_contains($webhookUrl, '192.168.') ||
-            str_contains($webhookUrl, '.local');
+        $isLocal = str_contains($fullWebhookUrl, 'localhost') ||
+            str_contains($fullWebhookUrl, '127.0.0.1') ||
+            str_contains($fullWebhookUrl, '192.168.') ||
+            str_contains($fullWebhookUrl, '.local');
 
-        if (!str_starts_with($webhookUrl, 'https://') && !$isLocal && !$this->option('force')) {
+        if (!str_starts_with($fullWebhookUrl, 'https://') && !$isLocal && !$this->option('force')) {
             $this->error('❌ URL должен быть HTTPS (используйте --force для обхода)');
             return;
         }
 
-        if (!str_starts_with($webhookUrl, 'https://') && ($isLocal || $this->option('force'))) {
+        if (!str_starts_with($fullWebhookUrl, 'https://') && ($isLocal || $this->option('force'))) {
             $this->warn('⚠️  Используется HTTP соединение (только для разработки!)');
         }
 
@@ -406,13 +425,14 @@ class {$className} extends AbstractBot
         // Устанавливаем webhook используя токен текущего окружения
         $this->info('🔧 Настройка webhook...');
         $this->line("  🌐 API хост: {$apiHost}");
+        $this->line("  🔧 Окружение: {$currentEnvironment}");
         if ($noSsl) {
             $this->warn('  ⚠️  SSL проверка отключена');
         }
 
         try {
             $payload = [
-                'url' => $webhookUrl,
+                'url' => $fullWebhookUrl,
                 'max_connections' => 40,
                 'allowed_updates' => [
                     'message',
@@ -445,13 +465,14 @@ class {$className} extends AbstractBot
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД
                 $bot->update([
-                    'webhook_url' => $webhookUrl,
+                    'webhook_url' => $environmentWebhookUrl, // Сохраняем относительный путь
                     'webhook_secret' => $secret,
                 ]);
 
                 $this->info('✅ Webhook настроен успешно');
-                $this->line("  🌐 URL: {$webhookUrl}");
+                $this->line("  🌐 URL: {$fullWebhookUrl}");
                 $this->line("  🔐 Secret: {$secret}");
+                $this->line("  🔧 Окружение: {$currentEnvironment}");
             } else {
                 $result = $response->json();
                 $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));
