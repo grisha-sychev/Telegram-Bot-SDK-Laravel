@@ -27,7 +27,7 @@ composer require tbot/laravel
 
 2. Опубликуйте конфигурацию:
 ```bash
-php artisan vendor:publish --provider="Bot\Providers\BotServiceProvider" --tag="config"
+php artisan vendor:publish --provider="Bot\Providers\BotServiceProvider"
 ```
 
 3. Запустите миграции:
