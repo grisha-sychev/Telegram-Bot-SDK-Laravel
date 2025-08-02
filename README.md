@@ -24,10 +24,12 @@ composer require tbot/laravel
 ```bash
 # Стандартная публикация (пропускает существующие файлы)
 php artisan bot:publish
-
+```
+```bash
 # Публикация с принудительным обновлением
 php artisan bot:publish --force
-
+```
+```bash
 # Публикация конкретных компонентов
 php artisan bot:publish --tag=bot-config --force
 php artisan bot:publish --tag=bot-app --force
