@@ -94,6 +94,7 @@ class PublishCommand extends Command
         $paths = $this->getPathsForTag($tag);
         
         foreach ($paths as $source => $destination) {
+            $this->line("📁 Копирование: {$source} → {$destination}");
             $this->copyFile($source, $destination, true);
         }
     }
@@ -160,6 +161,10 @@ class PublishCommand extends Command
             return;
         }
         
+        // Нормализуем пути
+        $source = realpath($source);
+        $destination = rtrim($destination, '/');
+        
         if (is_dir($source)) {
             $this->copyDirectory($source, $destination, $force);
         } else {
@@ -173,11 +178,15 @@ class PublishCommand extends Command
     private function copyDirectory(string $source, string $destination, bool $force): void
     {
         if (!is_dir($source)) {
+            $this->warn("⚠️  Источник не является директорией: {$source}");
             return;
         }
         
         if (!is_dir($destination)) {
-            mkdir($destination, 0755, true);
+            if (!mkdir($destination, 0755, true)) {
+                $this->error("❌ Не удалось создать директорию: {$destination}");
+                return;
+            }
         }
         
         $files = new \RecursiveIteratorIterator(
@@ -195,6 +204,7 @@ class PublishCommand extends Command
                     mkdir($destPath, 0755, true);
                 }
             } else {
+                // Убеждаемся, что destPath указывает на файл, а не на директорию
                 $this->copySingleFile($filePath, $destPath, $force);
             }
         }
@@ -205,10 +215,18 @@ class PublishCommand extends Command
      */
     private function copySingleFile(string $source, string $destination, bool $force): void
     {
+        // Если destination - это директория, добавляем имя файла
+        if (is_dir($destination) || substr($destination, -1) === '/') {
+            $destination = rtrim($destination, '/') . '/' . basename($source);
+        }
+        
         $destDir = dirname($destination);
         
         if (!is_dir($destDir)) {
-            mkdir($destDir, 0755, true);
+            if (!mkdir($destDir, 0755, true)) {
+                $this->error("❌ Не удалось создать директорию: {$destDir}");
+                return;
+            }
         }
         
         if (file_exists($destination) && !$force) {
