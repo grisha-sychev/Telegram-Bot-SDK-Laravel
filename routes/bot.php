@@ -13,6 +13,7 @@ use App\Models\Bot;
  * Роут для мультиботной архитектуры с базой данных
  * URL: /webhook/{botName}
  * Боты загружаются из базы данных
+ * Автоматически использует домен текущего окружения (APP_ENV)
  */
 Route::post('/webhook/{botName}', function ($botName) {
     try {
@@ -23,6 +24,22 @@ Route::post('/webhook/{botName}', function ($botName) {
             \Log::warning("Bot: Bot not found or disabled: {$botName}");
             return response()->json(['error' => 'Bot not found or disabled'], 404);
         }
+
+        // Проверяем, что у бота есть webhook URL и домен для текущего окружения
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        $fullWebhookUrl = $botModel->getFullWebhookUrl();
+        
+        if (!$fullWebhookUrl) {
+            \Log::error("Bot: No webhook URL or domain for environment '{$currentEnvironment}' for bot: {$botName}");
+            return response()->json(['error' => 'Webhook not configured for current environment'], 500);
+        }
+
+        // Логируем информацию о webhook
+        \Log::info("Bot: Processing webhook for bot: {$botName}", [
+            'environment' => $currentEnvironment,
+            'webhook_url' => $fullWebhookUrl,
+            'domain' => $botModel->getDomainForEnvironment($currentEnvironment)
+        ]);
 
         // Формируем имя класса бота
         $class = $botModel->getBotClass();
@@ -49,8 +66,6 @@ Route::post('/webhook/{botName}', function ($botName) {
         if (method_exists($bot, 'setBotModel')) {
             $bot->setBotModel($botModel);
         }
-        
-        \Log::info("Bot: Processing webhook for bot: {$botName}");
         
         // Запускаем обработку (приоритет: safeMain > run > main)
         if (method_exists($bot, 'safeMain')) {

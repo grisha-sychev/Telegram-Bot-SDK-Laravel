@@ -201,4 +201,33 @@ class Bot extends Model
         $field = $environment === 'prod' ? 'prod_domain' : 'dev_domain';
         return $query->whereNotNull($field)->where($field, '!=', '');
     }
+
+    /**
+     * Получить полный webhook URL с доменом текущего окружения
+     */
+    public function getFullWebhookUrl(): ?string
+    {
+        $environment = self::getCurrentEnvironment();
+        $domain = $this->getDomainForEnvironment($environment);
+        
+        if (!$domain || !$this->webhook_url) {
+            return null;
+        }
+        
+        return rtrim($domain, '/') . $this->webhook_url;
+    }
+
+    /**
+     * Получить полный webhook URL для указанного окружения
+     */
+    public function getFullWebhookUrlForEnvironment(string $environment): ?string
+    {
+        $domain = $this->getDomainForEnvironment($environment);
+        
+        if (!$domain || !$this->webhook_url) {
+            return null;
+        }
+        
+        return rtrim($domain, '/') . $this->webhook_url;
+    }
 } 

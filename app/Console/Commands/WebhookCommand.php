@@ -10,13 +10,14 @@ use App\Models\Bot;
 class WebhookCommand extends Command
 {
     protected $signature = 'bot:webhook 
-                            {action : Action (set, info, delete, test)}
+                            {action : Action (set, info, delete, test, auto, restart)}
                             {bot? : Bot name or ID}
                             {url? : Webhook URL (for set action)}
                             {--secret= : Webhook secret token}
                             {--max-connections=40 : Max webhook connections}
                             {--no-ssl : Disable SSL verification}
-                            {--force : Force action without confirmation}';
+                            {--force : Force action without confirmation}
+                            {--environment= : Environment (dev, prod) - if not specified, uses current APP_ENV}';
     
     protected $description = 'Управление webhook Bot';
 
@@ -45,14 +46,27 @@ class WebhookCommand extends Command
             return 1;
         }
 
-        // Проверяем наличие токена для текущего окружения
-        $currentEnvironment = Bot::getCurrentEnvironment();
+        // Определяем окружение (приоритет: опция --environment, затем APP_ENV)
+        $environment = $this->option('environment');
+        if ($environment && !in_array($environment, ['dev', 'prod'])) {
+            $this->error('❌ Окружение должно быть dev или prod');
+            return 1;
+        }
+        
+        $currentEnvironment = $environment ?: Bot::getCurrentEnvironment();
+        
+        // Проверяем наличие токена для указанного окружения
         if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
             $this->error("❌ Токен для окружения '{$currentEnvironment}' не установлен у бота '{$bot->name}'");
             return 1;
         }
 
         $token = $bot->getTokenForEnvironment($currentEnvironment);
+        
+        // Показываем информацию об используемом окружении
+        if ($environment) {
+            $this->info("🌍 Используется окружение: {$currentEnvironment}");
+        }
 
         switch ($action) {
             case 'set':
@@ -63,9 +77,15 @@ class WebhookCommand extends Command
                 return $this->deleteWebhook($bot, $token);
             case 'test':
                 return $this->testWebhook($bot, $token);
+            case 'auto':
+                return $this->autoWebhook($bot, $token, $currentEnvironment);
+            case 'restart':
+                return $this->restartWebhook($bot, $token, $currentEnvironment);
+            case 'check':
+                return $this->checkWebhook($bot, $token, $currentEnvironment);
             default:
                 $this->error("Неизвестное действие: {$action}");
-                $this->line('Доступные действия: set, info, delete, test');
+                $this->line('Доступные действия: set, info, delete, test, auto, restart, check');
                 return 1;
         }
     }
@@ -73,10 +93,10 @@ class WebhookCommand extends Command
     private function setWebhook(Bot $bot, string $token): int
     {
         $url = $this->argument('url');
+        $currentEnvironment = Bot::getCurrentEnvironment();
         
         if (!$url) {
             // Используем домен из базы данных для текущего окружения
-            $currentEnvironment = Bot::getCurrentEnvironment();
             $domain = $bot->getDomainForEnvironment($currentEnvironment);
             
             if ($domain) {
@@ -147,19 +167,22 @@ class WebhookCommand extends Command
 
         $this->info("🔧 Настройка webhook для бота '{$bot->name}'...");
         $this->line("🌐 URL: {$url}");
+        $this->line("🌍 Окружение: {$currentEnvironment}");
 
         try {
             $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
 
             if ($response->successful()) {
-                // Сохраняем webhook данные в БД
+                // Сохраняем webhook данные в БД (относительный путь)
+                $relativeUrl = "/webhook/{$bot->name}";
                 $bot->update([
-                    'webhook_url' => $url,
+                    'webhook_url' => $relativeUrl,
                     'webhook_secret' => $secret,
                 ]);
 
                 $this->info('✅ Webhook настроен успешно');
-                $this->line("🌐 URL: {$url}");
+                $this->line("🌐 Полный URL: {$url}");
+                $this->line("📝 Относительный URL в БД: {$relativeUrl}");
                 if ($secret) {
                     $this->line("🔐 Secret: {$secret}");
                 }
@@ -264,6 +287,234 @@ class WebhookCommand extends Command
             }
         } catch (\Exception $e) {
             $this->error('❌ Ошибка: ' . $e->getMessage());
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private function autoWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    {
+        $this->info("🔄 Автоматическое обновление webhook для бота '{$bot->name}'...");
+        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+
+        // Получаем домен для текущего окружения
+        $domain = $bot->getDomainForEnvironment($currentEnvironment);
+        if (!$domain) {
+            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+            return 1;
+        }
+
+        // Формируем webhook URL
+        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        $secret = $bot->webhook_secret;
+
+        $this->info("🌐 Webhook URL: {$webhookUrl}");
+
+        try {
+            // Удаляем старый webhook
+            $this->info('🗑️  Удаление старого webhook...');
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            
+            if (!$response->successful()) {
+                $result = $response->json();
+                $this->warn('⚠️  Ошибка удаления webhook: ' . ($result['description'] ?? 'Unknown error'));
+            } else {
+                $this->info('✅ Старый webhook удален');
+            }
+
+            // Устанавливаем новый webhook
+            $this->info('🔧 Установка нового webhook...');
+            
+            $payload = [
+                'url' => $webhookUrl,
+                'max_connections' => 40,
+                'allowed_updates' => [
+                    'message',
+                    'callback_query',
+                    'inline_query',
+                    'chosen_inline_result',
+                    'channel_post',
+                    'edited_message',
+                    'edited_channel_post'
+                ]
+            ];
+
+            if ($secret) {
+                $payload['secret_token'] = $secret;
+            }
+
+            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+
+            if ($response->successful()) {
+                // Сохраняем webhook данные в БД (относительный путь)
+                $relativeUrl = "/webhook/{$bot->name}";
+                $bot->update([
+                    'webhook_url' => $relativeUrl,
+                    'webhook_secret' => $secret,
+                ]);
+
+                $this->info('✅ Webhook обновлен успешно!');
+                $this->line("🌐 Полный URL: {$webhookUrl}");
+                $this->line("📝 Относительный URL в БД: {$relativeUrl}");
+                $this->line("🌍 Окружение: {$currentEnvironment}");
+                if ($secret) {
+                    $this->line("🔐 Secret: {$secret}");
+                }
+                
+            } else {
+                $result = $response->json();
+                $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));
+                return 1;
+            }
+        } catch (\Exception $e) {
+            $this->error('❌ Ошибка обновления webhook: ' . $e->getMessage());
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private function restartWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    {
+        $this->info("🔄 Перезапуск webhook для бота '{$bot->name}'...");
+        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+
+        // Получаем домен для текущего окружения
+        $domain = $bot->getDomainForEnvironment($currentEnvironment);
+        if (!$domain) {
+            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+            return 1;
+        }
+
+        // Формируем webhook URL
+        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        $secret = $bot->webhook_secret;
+
+        $this->info("🌐 Webhook URL: {$webhookUrl}");
+
+        try {
+            // Удаляем старый webhook
+            $this->info('🗑️  Удаление старого webhook...');
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            
+            if (!$response->successful()) {
+                $result = $response->json();
+                $this->warn('⚠️  Ошибка удаления webhook: ' . ($result['description'] ?? 'Unknown error'));
+            } else {
+                $this->info('✅ Старый webhook удален');
+            }
+
+            // Устанавливаем новый webhook
+            $this->info('🔧 Установка нового webhook...');
+            
+            $payload = [
+                'url' => $webhookUrl,
+                'max_connections' => 40,
+                'allowed_updates' => [
+                    'message',
+                    'callback_query',
+                    'inline_query',
+                    'chosen_inline_result',
+                    'channel_post',
+                    'edited_message',
+                    'edited_channel_post'
+                ]
+            ];
+
+            if ($secret) {
+                $payload['secret_token'] = $secret;
+            }
+
+            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+
+            if ($response->successful()) {
+                // Сохраняем webhook данные в БД (относительный путь)
+                $relativeUrl = "/webhook/{$bot->name}";
+                $bot->update([
+                    'webhook_url' => $relativeUrl,
+                    'webhook_secret' => $secret,
+                ]);
+
+                $this->info('✅ Webhook перезапущен успешно!');
+                $this->line("🌐 Полный URL: {$webhookUrl}");
+                $this->line("📝 Относительный URL в БД: {$relativeUrl}");
+                $this->line("🌍 Окружение: {$currentEnvironment}");
+                if ($secret) {
+                    $this->line("🔐 Secret: {$secret}");
+                }
+                
+            } else {
+                $result = $response->json();
+                $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));
+                return 1;
+            }
+        } catch (\Exception $e) {
+            $this->error('❌ Ошибка перезапуска webhook: ' . $e->getMessage());
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private function checkWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    {
+        $this->info("🔍 Проверка соответствия webhook для бота '{$bot->name}'...");
+        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+
+        // Получаем домен для текущего окружения
+        $domain = $bot->getDomainForEnvironment($currentEnvironment);
+        if (!$domain) {
+            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+            return 1;
+        }
+
+        // Формируем webhook URL
+        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        $secret = $bot->webhook_secret;
+
+        $this->info("🌐 Webhook URL: {$webhookUrl}");
+
+        try {
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+
+            if ($response->successful()) {
+                $info = $response->json()['result'];
+                $this->displayWebhookInfo($info);
+
+                $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+                $this->line("🌐 Webhook URL: {$webhookUrl}");
+
+                if ($info['url'] === $webhookUrl) {
+                    $this->info('✅ Webhook соответствует текущему окружению');
+                } else {
+                    $this->warn('⚠️  Webhook URL не соответствует текущему окружению. Ожидалось: ' . $webhookUrl);
+                }
+
+                if ($info['secret_token'] === $secret) {
+                    $this->info('✅ Secret token соответствует текущему окружению');
+                } else {
+                    $this->warn('⚠️  Secret token не соответствует текущему окружению. Ожидалось: ' . $secret);
+                }
+
+                if ($info['max_connections'] === 40) {
+                    $this->info('✅ Максимальное количество соединений соответствует текущему окружению');
+                } else {
+                    $this->warn('⚠️  Максимальное количество соединений не соответствует текущему окружению. Ожидалось: 40');
+                }
+
+                if ($info['allowed_updates'] === ['message', 'callback_query', 'inline_query', 'chosen_inline_result', 'channel_post', 'edited_message', 'edited_channel_post']) {
+                    $this->info('✅ Разрешенные обновления соответствуют текущему окружению');
+                } else {
+                    $this->warn('⚠️  Разрешенные обновления не соответствуют текущему окружению. Ожидалось: message, callback_query, inline_query, chosen_inline_result, channel_post, edited_message, edited_channel_post');
+                }
+
+            } else {
+                $this->error('❌ Ошибка получения информации о webhook для проверки');
+                return 1;
+            }
+        } catch (\Exception $e) {
+            $this->error('❌ Ошибка проверки webhook: ' . $e->getMessage());
             return 1;
         }
 
