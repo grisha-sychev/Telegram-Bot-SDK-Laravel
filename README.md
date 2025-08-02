@@ -16,10 +16,17 @@
 ## Установка
 
 ```bash
-composer require bot/laravel-bot
+composer require tbot/laravel
+```
+```bash
 php artisan vendor:publish --provider="Bot\Providers\BotServiceProvider"
+```
+```bash
 php artisan migrate
 ```
+
+
+
 
 ## Быстрый старт
 
