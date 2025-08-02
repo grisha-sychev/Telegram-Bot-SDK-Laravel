@@ -36,7 +36,31 @@ Route::post('/webhook/{botName}', function ($botName) {
 
         // Определяем окружение для этого бота на основе домена
         $currentEnvironment = Bot::getCurrentEnvironment();
-        $botEnvironment = determineBotEnvironment($botModel, $currentEnvironment);
+        $botEnvironment = (function($botModel, $currentEnvironment) {
+            // Получаем домен из запроса
+            $requestDomain = request()->getHost();
+            
+            // Проверяем, соответствует ли домен запроса dev или prod домену бота
+            $devDomain = $botModel->dev_domain;
+            $prodDomain = $botModel->prod_domain;
+            
+            if ($devDomain) {
+                $devHost = parse_url($devDomain, PHP_URL_HOST);
+                if ($devHost && $requestDomain === $devHost) {
+                    return 'dev';
+                }
+            }
+            
+            if ($prodDomain) {
+                $prodHost = parse_url($prodDomain, PHP_URL_HOST);
+                if ($prodHost && $requestDomain === $prodHost) {
+                    return 'prod';
+                }
+            }
+            
+            // Если домен не соответствует ни одному из настроенных, используем текущее окружение
+            return $currentEnvironment;
+        })($botModel, $currentEnvironment);
         
         // Устанавливаем окружение для бота
         Bot::setCurrentEnvironment($botEnvironment);
@@ -97,35 +121,4 @@ Route::post('/webhook/{botName}', function ($botName) {
         
         return response()->json(['error' => 'Internal server error'], 500);
     }
-})->name('bot.webhook.modern');
-
-/**
- * Определяет окружение для бота на основе домена запроса
- */
-if (!function_exists('determineBotEnvironment')) {
-    function determineBotEnvironment($botModel, $currentEnvironment) {
-        // Получаем домен из запроса
-        $requestDomain = request()->getHost();
-        
-        // Проверяем, соответствует ли домен запроса dev или prod домену бота
-        $devDomain = $botModel->dev_domain;
-        $prodDomain = $botModel->prod_domain;
-        
-        if ($devDomain) {
-            $devHost = parse_url($devDomain, PHP_URL_HOST);
-            if ($devHost && $requestDomain === $devHost) {
-                return 'dev';
-            }
-        }
-        
-        if ($prodDomain) {
-            $prodHost = parse_url($prodDomain, PHP_URL_HOST);
-            if ($prodHost && $requestDomain === $prodHost) {
-                return 'prod';
-            }
-        }
-        
-        // Если домен не соответствует ни одному из настроенных, используем текущее окружение
-        return $currentEnvironment;
-    }
-} 
+})->name('bot.webhook.modern'); 
