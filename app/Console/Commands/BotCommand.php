@@ -63,7 +63,7 @@ class BotCommand extends Command
             $this->newLine();
             
             $this->table(
-                ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Текущий Токен', 'Статус', 'Webhook', 'Создан'],
+                ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Dev Domain', 'Prod Domain', 'Текущий Токен', 'Статус', 'Webhook', 'Создан'],
                 $bots->map(function ($bot) use ($currentEnvironment) {
                     return [
                         $bot->id,
@@ -71,6 +71,8 @@ class BotCommand extends Command
                         '@' . $bot->username,
                         $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
                         $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
+                        $bot->hasDomainForEnvironment('dev') ? '✅' : '❌',
+                        $bot->hasDomainForEnvironment('prod') ? '✅' : '❌',
                         $bot->hasTokenForEnvironment($currentEnvironment) ? '✅' : '❌',
                         $bot->enabled ? '✅ Активен' : '❌ Отключен',
                         $bot->webhook_url ? '✅ Настроен' : '❌ Не настроен',
@@ -119,6 +121,9 @@ class BotCommand extends Command
             $this->line("  🗝️  Dev Token: " . ($bot->hasTokenForEnvironment('dev') ? $bot->getMaskedTokenForEnvironment('dev') : '❌ Не установлен'));
             $this->line("  🗝️  Prod Token: " . ($bot->hasTokenForEnvironment('prod') ? $bot->getMaskedTokenForEnvironment('prod') : '❌ Не установлен'));
             $this->line("  🗝️  Текущий токен: " . ($bot->hasTokenForEnvironment($currentEnvironment) ? $bot->getMaskedTokenForEnvironment($currentEnvironment) : '❌ Не установлен'));
+            $this->line("  🌐 Dev Domain: " . ($bot->hasDomainForEnvironment('dev') ? $bot->getDomainForEnvironment('dev') : '❌ Не установлен'));
+            $this->line("  🌐 Prod Domain: " . ($bot->hasDomainForEnvironment('prod') ? $bot->getDomainForEnvironment('prod') : '❌ Не установлен'));
+            $this->line("  🌐 Текущий домен: " . ($bot->hasDomainForEnvironment($currentEnvironment) ? $bot->getDomainForEnvironment($currentEnvironment) : '❌ Не установлен'));
             $this->line("  📡 Статус: " . ($bot->enabled ? '✅ Активен' : '❌ Отключен'));
             
             if ($bot->description) {

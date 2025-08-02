@@ -28,8 +28,7 @@ class Services
     public function getToken(string|null $bot)
     {
         if (!$bot) {
-            // Fallback на основной токен из конфигурации
-            return config('bot.token');
+            return null;
         }
 
         try {
@@ -37,8 +36,7 @@ class Services
             $botModel = \App\Models\Bot::byName($bot)->where('enabled', true)->first();
             return $botModel ? $botModel->token : null;
         } catch (\Exception $e) {
-            // Fallback на конфигурацию если БД недоступна
-            return config('bot.' . $bot);
+            return null;
         }
     }
 

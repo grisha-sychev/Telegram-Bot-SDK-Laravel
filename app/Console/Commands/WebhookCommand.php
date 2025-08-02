@@ -75,7 +75,16 @@ class WebhookCommand extends Command
         $url = $this->argument('url');
         
         if (!$url) {
-            $url = $this->ask('Введите URL webhook');
+            // Используем домен из базы данных для текущего окружения
+            $currentEnvironment = Bot::getCurrentEnvironment();
+            $domain = $bot->getDomainForEnvironment($currentEnvironment);
+            
+            if ($domain) {
+                $defaultUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+                $url = $this->ask('Введите URL webhook', $defaultUrl);
+            } else {
+                $url = $this->ask('Введите URL webhook');
+            }
         }
 
         if (!$url) {
@@ -89,9 +98,19 @@ class WebhookCommand extends Command
             return 1;
         }
 
-        if (!str_starts_with($url, 'https://')) {
-            $this->error('❌ URL должен использовать HTTPS');
+        // Проверяем HTTPS (кроме локальных адресов)
+        $isLocal = str_contains($url, 'localhost') ||
+            str_contains($url, '127.0.0.1') ||
+            str_contains($url, '192.168.') ||
+            str_contains($url, '.local');
+
+        if (!str_starts_with($url, 'https://') && !$isLocal) {
+            $this->error('❌ URL должен использовать HTTPS (кроме локальных адресов)');
             return 1;
+        }
+
+        if (!str_starts_with($url, 'https://') && $isLocal) {
+            $this->warn('⚠️  Используется HTTP соединение (только для разработки!)');
         }
 
         // Подготавливаем параметры

@@ -15,6 +15,8 @@ class Bot extends Model
         'name',
         'dev_token',
         'prod_token',
+        'dev_domain',
+        'prod_domain',
         'username',
         'first_name',
         'description',
@@ -85,6 +87,44 @@ class Bot extends Model
     }
 
     /**
+     * Получить домен для текущего окружения
+     */
+    public function getDomainAttribute(): ?string
+    {
+        $environment = self::getCurrentEnvironment();
+        return $this->getDomainForEnvironment($environment);
+    }
+
+    /**
+     * Получить домен для указанного окружения
+     */
+    public function getDomainForEnvironment(string $environment): ?string
+    {
+        return $environment === 'prod' ? $this->prod_domain : $this->dev_domain;
+    }
+
+    /**
+     * Установить домен для указанного окружения
+     */
+    public function setDomainForEnvironment(string $environment, string $domain): void
+    {
+        if ($environment === 'prod') {
+            $this->prod_domain = $domain;
+        } else {
+            $this->dev_domain = $domain;
+        }
+    }
+
+    /**
+     * Проверить наличие домена для указанного окружения
+     */
+    public function hasDomainForEnvironment(string $environment): bool
+    {
+        $domain = $this->getDomainForEnvironment($environment);
+        return !empty($domain);
+    }
+
+    /**
      * Получить маскированный токен для отображения
      */
     public function getMaskedTokenAttribute(): string
@@ -150,6 +190,15 @@ class Bot extends Model
     public function scopeWithTokenForEnvironment($query, string $environment)
     {
         $field = $environment === 'prod' ? 'prod_token' : 'dev_token';
+        return $query->whereNotNull($field)->where($field, '!=', '');
+    }
+
+    /**
+     * Боты с доменами для указанного окружения
+     */
+    public function scopeWithDomainForEnvironment($query, string $environment)
+    {
+        $field = $environment === 'prod' ? 'prod_domain' : 'dev_domain';
         return $query->whereNotNull($field)->where($field, '!=', '');
     }
 } 

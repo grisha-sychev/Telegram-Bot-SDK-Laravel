@@ -93,7 +93,7 @@ class SetupCommand extends Command
             if ($bots->isNotEmpty()) {
                 $this->info('📋 Существующие боты:');
                 $this->table(
-                    ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Статус', 'Создан'],
+                    ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Dev Domain', 'Prod Domain', 'Статус', 'Создан'],
                     $bots->map(function ($bot) {
                         return [
                             $bot->id,
@@ -101,6 +101,8 @@ class SetupCommand extends Command
                             '@' . $bot->username,
                             $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
                             $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
+                            $bot->hasDomainForEnvironment('dev') ? '✅' : '❌',
+                            $bot->hasDomainForEnvironment('prod') ? '✅' : '❌',
                             $bot->enabled ? '✅ Активен' : '❌ Отключен',
                             $bot->created_at->format('d.m.Y H:i')
                         ];
@@ -160,6 +162,24 @@ class SetupCommand extends Command
             return null;
         }
 
+        // Запрашиваем домен для разработки
+        $this->info('🔧 Домен для разработки (dev):');
+        $devDomain = $this->ask('Введите домен для разработки (например: https://dev.example.com)');
+        if ($devDomain && !filter_var($devDomain, FILTER_VALIDATE_URL)) {
+            $this->error('❌ Неверный формат домена для разработки');
+            $this->line('Домен должен быть валидным URL (например: https://dev.example.com)');
+            return null;
+        }
+
+        // Запрашиваем домен для продакшена
+        $this->info('🚀 Домен для продакшена (prod):');
+        $prodDomain = $this->ask('Введите домен для продакшена (например: https://example.com)');
+        if ($prodDomain && !filter_var($prodDomain, FILTER_VALIDATE_URL)) {
+            $this->error('❌ Неверный формат домена для продакшена');
+            $this->line('Домен должен быть валидным URL (например: https://example.com)');
+            return null;
+        }
+
         // Проверяем, что хотя бы один токен указан
         if (!$devToken && !$prodToken) {
             $this->error('❌ Необходимо указать хотя бы один токен (dev или prod)');
@@ -207,6 +227,8 @@ class SetupCommand extends Command
             'name' => $name,
             'dev_token' => $devToken,
             'prod_token' => $prodToken,
+            'dev_domain' => $devDomain,
+            'prod_domain' => $prodDomain,
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
             'webhook_url' => $webhookUrl,

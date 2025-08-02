@@ -12,12 +12,6 @@ return [
     */
 
     /**
-     * Токен бота Telegram (для обратной совместимости)
-     * Получите в @BotFather
-     */
-    'token' => env('BOT_TOKEN'),
-
-    /**
      * Режим отладки
      */
     'debug' => env('BOT_DEBUG', false),

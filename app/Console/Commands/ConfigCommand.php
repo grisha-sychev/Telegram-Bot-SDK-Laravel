@@ -154,12 +154,16 @@ class ConfigCommand extends Command
         $errors = [];
         $warnings = [];
 
-        // Проверка токена
-        $token = config('bot.token');
-        if (!$token) {
-            $errors[] = 'BOT_TOKEN не установлен';
-        } elseif (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
-            $errors[] = 'Неверный формат токена бота';
+        // Проверка наличия ботов в базе данных
+        try {
+            $botsCount = \App\Models\Bot::where('enabled', true)->count();
+            if ($botsCount === 0) {
+                $errors[] = 'Нет активных ботов в базе данных';
+            } else {
+                $this->info("✅ Найдено активных ботов: {$botsCount}");
+            }
+        } catch (\Exception $e) {
+            $errors[] = 'Ошибка подключения к базе данных: ' . $e->getMessage();
         }
 
         // Проверка webhook secret
