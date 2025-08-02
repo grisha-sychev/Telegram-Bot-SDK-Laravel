@@ -1,12 +1,12 @@
 <?php
 
-namespace Teg;
+namespace Bot;
 
 use App\Enums\MediaType;
 use Closure;
 use Illuminate\Support\Facades\File;
-use Teg\Api\Skeleton;
-use Teg\Support\Facades\Services;
+use Bot\Api\Skeleton;
+use Bot\Support\Facades\Services;
 
 class LightBot extends Skeleton
 {
@@ -351,7 +351,7 @@ class LightBot extends Skeleton
      */
     protected function logActivity(string $event, array $data = []): void
     {
-        if (config('tegbot.settings.enable_detailed_logging', false)) {
+        if (config('bot.settings.enable_detailed_logging', false)) {
             \Log::info("Telegram Bot Activity: {$event}", array_merge([
                 'bot' => $this->bot,
                 'timestamp' => now()->toISOString(),
@@ -458,7 +458,7 @@ class LightBot extends Skeleton
      */
     protected function isAdmin(): bool
     {
-        $adminIds = config('tegbot.settings.admin_ids', []);
+        $adminIds = config('bot.settings.admin_ids', []);
         return in_array($this->getUserId(), $adminIds);
     }
 

@@ -42,7 +42,7 @@ class ConfigCommand extends Command
         $this->info('⚙️  Bot Configuration');
         $this->newLine();
 
-        $config = config('tegbot', []);
+        $config = config('bot', []);
         $format = $this->option('format');
 
         switch ($format) {
@@ -72,14 +72,14 @@ class ConfigCommand extends Command
             return 1;
         }
 
-        $value = config("tegbot.{$key}");
+                    $value = config("bot.{$key}");
         
         if ($value === null) {
             $this->warn("⚠️  Ключ '{$key}' не найден");
             return 1;
         }
 
-        $this->info("tegbot.{$key}:");
+                    $this->info("bot.{$key}:");
         
         if (is_array($value)) {
             $this->line(json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
@@ -117,7 +117,7 @@ class ConfigCommand extends Command
             return 1;
         }
 
-        $this->info("Установка tegbot.{$key} = " . json_encode($parsedValue));
+                    $this->info("Установка bot.{$key} = " . json_encode($parsedValue));
         
         if (!$this->confirm('Продолжить?', true)) {
             $this->info('Отменено');
@@ -155,25 +155,25 @@ class ConfigCommand extends Command
         $warnings = [];
 
         // Проверка токена
-        $token = config('tegbot.token');
+        $token = config('bot.token');
         if (!$token) {
-            $errors[] = 'TEGBOT_TOKEN не установлен';
+            $errors[] = 'BOT_TOKEN не установлен';
         } elseif (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
             $errors[] = 'Неверный формат токена бота';
         }
 
         // Проверка webhook secret
-        $webhookSecret = config('tegbot.security.webhook_secret');
+        $webhookSecret = config('bot.security.webhook_secret');
         if (!$webhookSecret) {
-            $warnings[] = 'TEGBOT_WEBHOOK_SECRET не установлен (риск безопасности)';
+            $warnings[] = 'BOT_WEBHOOK_SECRET не установлен (риск безопасности)';
         } elseif (strlen($webhookSecret) < 16) {
-            $warnings[] = 'TEGBOT_WEBHOOK_SECRET слишком короткий (рекомендуется минимум 16 символов)';
+            $warnings[] = 'BOT_WEBHOOK_SECRET слишком короткий (рекомендуется минимум 16 символов)';
         }
 
         // Проверка admin IDs
-        $adminIds = config('tegbot.security.admin_ids', []);
+        $adminIds = config('bot.security.admin_ids', []);
         if (empty($adminIds)) {
-            $warnings[] = 'TEGBOT_ADMIN_IDS не указаны';
+            $warnings[] = 'BOT_ADMIN_IDS не указаны';
         } else {
             foreach ($adminIds as $id) {
                 if (!is_numeric($id)) {
@@ -183,7 +183,7 @@ class ConfigCommand extends Command
         }
 
         // Проверка путей
-        $downloadPath = config('tegbot.files.download_path');
+        $downloadPath = config('bot.files.download_path');
         if ($downloadPath && !is_dir($downloadPath)) {
             $warnings[] = "Путь для загрузок не существует: {$downloadPath}";
         } elseif ($downloadPath && !is_writable($downloadPath)) {
@@ -191,13 +191,13 @@ class ConfigCommand extends Command
         }
 
         // Проверка лимитов
-        $maxFileSize = config('tegbot.files.max_file_size');
+        $maxFileSize = config('bot.files.max_file_size');
         if ($maxFileSize && $maxFileSize > 50 * 1024 * 1024) {
             $warnings[] = "Лимит размера файла очень большой: " . $this->formatFileSize($maxFileSize);
         }
 
         // Проверка API настроек
-        $apiTimeout = config('tegbot.api.timeout');
+        $apiTimeout = config('bot.api.timeout');
         if ($apiTimeout && $apiTimeout > 60) {
             $warnings[] = "API timeout очень большой: {$apiTimeout}s";
         }

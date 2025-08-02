@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Api;
+namespace Bot\Api;
 
 class Skeleton extends Basic
 {

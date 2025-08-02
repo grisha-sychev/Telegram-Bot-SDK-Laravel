@@ -1,9 +1,9 @@
 <?php
 
-namespace Teg\Modules;
+namespace Bot\Modules;
 
 use Stichoza\GoogleTranslate\GoogleTranslate;
-use Teg\Support\Facades\Services;
+use Bot\Support\Facades\Services;
 use Illuminate\Support\Facades\Cache;
 
 trait TranslateModule

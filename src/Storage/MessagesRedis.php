@@ -1,9 +1,9 @@
 <?php
 
-namespace Teg\Storage;
+namespace Bot\Storage;
 
 use Illuminate\Support\Facades\Redis;
-use Teg\Storage\Interface\Messages;
+use Bot\Storage\Interface\Messages;
 
 /**
  * Класс для работы с сообщениями через Redis

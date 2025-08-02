@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Support\Facades;
+namespace Bot\Support\Facades;
 
 use Closure;
 use stdClass;
@@ -29,7 +29,7 @@ class Services
     {
         if (!$bot) {
             // Fallback на основной токен из конфигурации
-            return config('tegbot.token');
+            return config('bot.token');
         }
 
         try {
@@ -38,7 +38,7 @@ class Services
             return $botModel ? $botModel->token : null;
         } catch (\Exception $e) {
             // Fallback на конфигурацию если БД недоступна
-            return config('tegbot.' . $bot);
+            return config('bot.' . $bot);
         }
     }
 

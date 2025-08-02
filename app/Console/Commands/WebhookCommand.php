@@ -5,38 +5,64 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use App\Models\Bot;
 
 class WebhookCommand extends Command
 {
     protected $signature = 'bot:webhook 
                             {action : Action (set, info, delete, test)}
+                            {bot? : Bot name or ID}
                             {url? : Webhook URL (for set action)}
                             {--secret= : Webhook secret token}
                             {--max-connections=40 : Max webhook connections}
                             {--no-ssl : Disable SSL verification}
                             {--force : Force action without confirmation}';
     
-    protected $description = 'Управление webhook TegBot';
+    protected $description = 'Управление webhook Bot';
 
     public function handle()
     {
         $action = $this->argument('action');
-        $token = config('tegbot.token', env('TEGBOT_TOKEN'));
+        $botIdentifier = $this->argument('bot');
 
-        if (!$token) {
-            $this->error('❌ TEGBOT_TOKEN не настроен');
+        // Если бот не указан, запрашиваем выбор
+        if (!$botIdentifier) {
+            $bots = Bot::enabled()->get();
+            if ($bots->isEmpty()) {
+                $this->error('❌ Нет активных ботов');
+                $this->line('Создайте бота: php artisan bot:new');
+                return 1;
+            }
+
+            $botNames = $bots->pluck('name')->toArray();
+            $botIdentifier = $this->choice('Выберите бота:', $botNames);
+        }
+
+        // Находим бота
+        $bot = $this->findBot($botIdentifier);
+        if (!$bot) {
+            $this->error("❌ Бот '{$botIdentifier}' не найден");
             return 1;
         }
 
+        // Проверяем наличие токена для текущего окружения
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
+            $this->error("❌ Токен для окружения '{$currentEnvironment}' не установлен у бота '{$bot->name}'");
+            return 1;
+        }
+
+        $token = $bot->getTokenForEnvironment($currentEnvironment);
+
         switch ($action) {
             case 'set':
-                return $this->setWebhook($token);
+                return $this->setWebhook($bot, $token);
             case 'info':
-                return $this->getWebhookInfo($token);
+                return $this->getWebhookInfo($bot, $token);
             case 'delete':
-                return $this->deleteWebhook($token);
+                return $this->deleteWebhook($bot, $token);
             case 'test':
-                return $this->testWebhook($token);
+                return $this->testWebhook($bot, $token);
             default:
                 $this->error("Неизвестное действие: {$action}");
                 $this->line('Доступные действия: set, info, delete, test');
@@ -44,7 +70,7 @@ class WebhookCommand extends Command
         }
     }
 
-    private function setWebhook(string $token): int
+    private function setWebhook(Bot $bot, string $token): int
     {
         $url = $this->argument('url');
         
@@ -69,7 +95,7 @@ class WebhookCommand extends Command
         }
 
         // Подготавливаем параметры
-        $secret = $this->option('secret') ?? config('tegbot.security.webhook_secret', env('TEGBOT_WEBHOOK_SECRET'));
+        $secret = $this->option('secret') ?? config('bot.security.webhook_secret', env('BOT_WEBHOOK_SECRET'));
         $maxConnections = $this->option('max-connections');
 
         if (!$secret) {
@@ -77,7 +103,7 @@ class WebhookCommand extends Command
                 $secret = Str::random(32);
                 $this->warn("💡 Сгенерирован secret: {$secret}");
                 $this->warn('Добавьте в .env файл:');
-                $this->line("TEGBOT_WEBHOOK_SECRET={$secret}");
+                $this->line("BOT_WEBHOOK_SECRET={$secret}");
                 $this->newLine();
             }
         }
@@ -100,275 +126,178 @@ class WebhookCommand extends Command
             $payload['secret_token'] = $secret;
         }
 
-        // Показываем что будем делать
-        $this->info('🌐 Установка webhook:');
-        $this->line("  URL: {$url}");
-        $this->line("  Max connections: {$maxConnections}");
-        $this->line("  Secret: " . ($secret ? 'Да' : 'Нет'));
-        $this->line("  Updates: " . count($payload['allowed_updates']) . " типов");
+        $this->info("🔧 Настройка webhook для бота '{$bot->name}'...");
+        $this->line("🌐 URL: {$url}");
 
-        if (!$this->option('force') && !$this->confirm('Продолжить установку?', true)) {
-            $this->info('Отменено');
-            return 0;
-        }
-
-        // Выполняем запрос
         try {
-            $http = Http::timeout(30);
-            
-            if ($this->option('no-ssl')) {
-                $http = $http->withOptions([
-                    'verify' => false,
-                    'curl' => [
-                        CURLOPT_SSL_VERIFYPEER => false,
-                        CURLOPT_SSL_VERIFYHOST => false,
-                    ]
-                ]);
-                $this->warn('⚠️  SSL проверка отключена');
-            }
-            
-            $response = $http->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
-            
+            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+
             if ($response->successful()) {
-                $result = $response->json();
-                
-                if ($result['ok']) {
-                    $this->info('✅ Webhook установлен успешно');
-                    
-                    // Проверяем сразу
-                    $this->newLine();
-                    $this->info('🔍 Проверка webhook...');
-                    $this->getWebhookInfo($token);
-                } else {
-                    $this->error('❌ Ошибка: ' . ($result['description'] ?? 'Unknown error'));
-                    return 1;
+                // Сохраняем webhook данные в БД
+                $bot->update([
+                    'webhook_url' => $url,
+                    'webhook_secret' => $secret,
+                ]);
+
+                $this->info('✅ Webhook настроен успешно');
+                $this->line("🌐 URL: {$url}");
+                if ($secret) {
+                    $this->line("🔐 Secret: {$secret}");
                 }
             } else {
-                $this->error('❌ HTTP ошибка: ' . $response->status());
+                $result = $response->json();
+                $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));
                 return 1;
             }
         } catch (\Exception $e) {
-            $this->error('❌ Ошибка соединения: ' . $e->getMessage());
+            $this->error('❌ Ошибка установки webhook: ' . $e->getMessage());
             return 1;
         }
 
         return 0;
     }
 
-    private function getWebhookInfo(string $token): int
+    private function getWebhookInfo(Bot $bot, string $token): int
     {
+        $this->info("🔍 Получение информации о webhook для бота '{$bot->name}'...");
+
         try {
-            $http = Http::timeout(10);
-            
-            if ($this->option('no-ssl')) {
-                $http = $http->withOptions([
-                    'verify' => false,
-                    'curl' => [
-                        CURLOPT_SSL_VERIFYPEER => false,
-                        CURLOPT_SSL_VERIFYHOST => false,
-                    ]
-                ]);
-            }
-            
-            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
-            
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+
             if ($response->successful()) {
-                $result = $response->json();
-                
-                if ($result['ok']) {
-                    $info = $result['result'];
-                    $this->displayWebhookInfo($info);
-                } else {
-                    $this->error('❌ Ошибка: ' . ($result['description'] ?? 'Unknown error'));
-                    return 1;
-                }
+                $info = $response->json()['result'];
+                $this->displayWebhookInfo($info);
             } else {
-                $this->error('❌ HTTP ошибка: ' . $response->status());
+                $this->error('❌ Ошибка получения информации о webhook');
                 return 1;
             }
         } catch (\Exception $e) {
-            $this->error('❌ Ошибка соединения: ' . $e->getMessage());
+            $this->error('❌ Ошибка: ' . $e->getMessage());
             return 1;
         }
 
         return 0;
     }
 
-    private function deleteWebhook(string $token): int
+    private function deleteWebhook(Bot $bot, string $token): int
     {
-        if (!$this->option('force') && !$this->confirm('⚠️  Удалить webhook?', false)) {
+        $this->info("🗑️  Удаление webhook для бота '{$bot->name}'...");
+
+        if (!$this->option('force') && !$this->confirm('Вы уверены, что хотите удалить webhook?', false)) {
             $this->info('Отменено');
             return 0;
         }
 
         try {
-            $http = Http::timeout(10);
-            
-            if ($this->option('no-ssl')) {
-                $http = $http->withOptions([
-                    'verify' => false,
-                    'curl' => [
-                        CURLOPT_SSL_VERIFYPEER => false,
-                        CURLOPT_SSL_VERIFYHOST => false,
-                    ]
-                ]);
-            }
-            
-            $response = $http->post("https://api.telegram.org/bot{$token}/deleteWebhook");
-            
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+
             if ($response->successful()) {
-                $result = $response->json();
-                
-                if ($result['ok']) {
-                    $this->info('✅ Webhook удален');
-                } else {
-                    $this->error('❌ Ошибка: ' . ($result['description'] ?? 'Unknown error'));
-                    return 1;
-                }
+                // Очищаем webhook данные в БД
+                $bot->update([
+                    'webhook_url' => null,
+                    'webhook_secret' => null,
+                ]);
+
+                $this->info('✅ Webhook удален успешно');
             } else {
-                $this->error('❌ HTTP ошибка: ' . $response->status());
+                $result = $response->json();
+                $this->error('❌ Ошибка удаления webhook: ' . ($result['description'] ?? 'Unknown error'));
                 return 1;
             }
         } catch (\Exception $e) {
-            $this->error('❌ Ошибка соединения: ' . $e->getMessage());
+            $this->error('❌ Ошибка удаления webhook: ' . $e->getMessage());
             return 1;
         }
 
         return 0;
     }
 
-    private function testWebhook(string $token): int
+    private function testWebhook(Bot $bot, string $token): int
     {
-        $this->info('🧪 Тестирование webhook...');
-        $this->newLine();
+        $this->info("🧪 Тестирование webhook для бота '{$bot->name}'...");
 
-        // Получаем информацию о webhook
         try {
-            $http = Http::timeout(10);
-            
-            if ($this->option('no-ssl')) {
-                $http = $http->withOptions([
-                    'verify' => false,
-                    'curl' => [
-                        CURLOPT_SSL_VERIFYPEER => false,
-                        CURLOPT_SSL_VERIFYHOST => false,
-                    ]
-                ]);
-            }
-            
-            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
-            
-            if (!$response->successful()) {
-                $this->error('❌ Не удалось получить информацию о webhook');
-                return 1;
-            }
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
 
-            $result = $response->json();
-            $info = $result['result'];
-
-            if (empty($info['url'])) {
-                $this->error('❌ Webhook не установлен');
-                return 1;
-            }
-
-            $webhookUrl = $info['url'];
-            $this->info("🌐 Тестируем: {$webhookUrl}");
-
-            // Проверка 1: HTTP доступность
-            $this->line('🔍 Проверка доступности...');
-            
-            try {
-                $testHttp = Http::timeout(10);
+            if ($response->successful()) {
+                $info = $response->json()['result'];
                 
-                if ($this->option('no-ssl')) {
-                    $testHttp = $testHttp->withOptions([
-                        'verify' => false,
-                        'curl' => [
-                            CURLOPT_SSL_VERIFYPEER => false,
-                            CURLOPT_SSL_VERIFYHOST => false,
-                        ]
-                    ]);
+                if (!$info['url']) {
+                    $this->warn('⚠️  Webhook не настроен');
+                    return 0;
                 }
-                
-                $testResponse = $testHttp->get($webhookUrl);
-                $this->info("  ✅ HTTP статус: {$testResponse->status()}");
-            } catch (\Exception $e) {
-                $this->warn("  ⚠️  HTTP недоступен: {$e->getMessage()}");
+
+                $this->line("🌐 URL: {$info['url']}");
+                $this->line("📊 Ошибок: " . ($info['last_error_message'] ?? 'Нет'));
+                $this->line("📅 Последнее обновление: " . ($info['last_error_date'] ? date('d.m.Y H:i:s', $info['last_error_date']) : 'Нет'));
+
+                // Проверяем SSL сертификат
+                $this->checkSSL($info['url']);
+
+                // Отправляем тестовое обновление
+                if ($this->confirm('Отправить тестовое обновление?', false)) {
+                    $secret = $bot->webhook_secret;
+                    $this->sendTestUpdate($info['url'], $secret);
+                }
+            } else {
+                $this->error('❌ Ошибка получения информации о webhook');
+                return 1;
             }
-
-            // Проверка 2: SSL сертификат
-            $this->line('🔍 Проверка SSL...');
-            $this->checkSSL($webhookUrl);
-
-            // Проверка 3: Статистика webhook
-            $this->newLine();
-            $this->line('📊 Статистика webhook:');
-            $this->displayWebhookInfo($info);
-
-            // Проверка 4: Отправка тестового запроса (если есть secret)
-            $secret = config('tegbot.security.webhook_secret', env('TEGBOT_WEBHOOK_SECRET'));
-            if ($secret) {
-                $this->newLine();
-                $this->line('🧪 Отправка тестового запроса...');
-                $this->sendTestUpdate($webhookUrl, $secret);
-            }
-
         } catch (\Exception $e) {
-            $this->error('❌ Ошибка тестирования: ' . $e->getMessage());
+            $this->error('❌ Ошибка: ' . $e->getMessage());
             return 1;
         }
 
         return 0;
+    }
+
+    private function findBot(string $identifier): ?Bot
+    {
+        // Проверяем, это ID или имя
+        if (is_numeric($identifier)) {
+            return Bot::find($identifier);
+        } else {
+            return Bot::byName($identifier)->first();
+        }
     }
 
     private function displayWebhookInfo(array $info): void
     {
-        if (empty($info['url'])) {
-            $this->warn('⚠️  Webhook не установлен');
-            return;
-        }
+        $this->info('📋 Информация о webhook:');
+        $this->newLine();
 
-        $this->info('🌐 Webhook Information:');
-        $this->table(
-            ['Parameter', 'Value'],
-            [
-                ['URL', $info['url']],
-                ['Has Custom Certificate', $info['has_custom_certificate'] ? 'Yes' : 'No'],
-                ['Pending Updates', $info['pending_update_count'] ?? 0],
-                ['Max Connections', $info['max_connections'] ?? 'Default'],
-                ['Allowed Updates', empty($info['allowed_updates']) ? 'All' : implode(', ', $info['allowed_updates'])],
-                ['Last Error Date', isset($info['last_error_date']) ? date('Y-m-d H:i:s', $info['last_error_date']) : 'None'],
-                ['Last Error Message', $info['last_error_message'] ?? 'None'],
-                ['Last Synchronization Error Date', isset($info['last_synchronization_error_date']) ? date('Y-m-d H:i:s', $info['last_synchronization_error_date']) : 'None'],
-            ]
-        );
-
-        // Анализ состояния
-        if ($info['pending_update_count'] > 100) {
-            $this->warn("⚠️  Большое количество необработанных обновлений: {$info['pending_update_count']}");
-        }
-
-        if (!empty($info['last_error_message'])) {
-            $errorAge = time() - ($info['last_error_date'] ?? 0);
-            if ($errorAge < 3600) { // Меньше часа
-                $this->error("🚨 Недавняя ошибка: {$info['last_error_message']}");
+        if ($info['url']) {
+            $this->line("🌐 URL: {$info['url']}");
+            $this->line("🔐 Secret: " . ($info['has_custom_certificate'] ? 'Да' : 'Нет'));
+            $this->line("📊 Макс. соединений: {$info['max_connections']}");
+            $this->line("📅 Последняя ошибка: " . ($info['last_error_date'] ? date('d.m.Y H:i:s', $info['last_error_date']) : 'Нет'));
+            
+            if ($info['last_error_message']) {
+                $this->line("❌ Сообщение об ошибке: {$info['last_error_message']}");
             }
+
+            $this->line("📈 Ожидающие обновления: {$info['pending_update_count']}");
+        } else {
+            $this->line("❌ Webhook не настроен");
         }
+
+        $this->newLine();
     }
 
     private function checkSSL(string $url): void
     {
-        $host = parse_url($url, PHP_URL_HOST);
-        $port = parse_url($url, PHP_URL_PORT) ?? 443;
+        $this->line('🔒 Проверка SSL сертификата...');
 
         try {
             $context = stream_context_create([
                 'ssl' => [
-                    'capture_peer_cert' => true,
                     'verify_peer' => true,
                     'verify_peer_name' => true,
                 ]
             ]);
+
+            $host = parse_url($url, PHP_URL_HOST);
+            $port = parse_url($url, PHP_URL_PORT) ?: 443;
 
             $socket = stream_socket_client(
                 "ssl://{$host}:{$port}",
@@ -380,85 +309,58 @@ class WebhookCommand extends Command
             );
 
             if ($socket) {
-                $cert = stream_context_get_params($socket)['options']['ssl']['peer_certificate'];
-                $certInfo = openssl_x509_parse($cert);
-                
-                $validFrom = date('Y-m-d', $certInfo['validFrom_time_t']);
-                $validTo = date('Y-m-d', $certInfo['validTo_time_t']);
-                $daysLeft = floor(($certInfo['validTo_time_t'] - time()) / 86400);
-                
-                $this->info("  ✅ SSL сертификат действителен");
-                $this->line("     Действует: {$validFrom} - {$validTo}");
-                
-                if ($daysLeft < 30) {
-                    $this->warn("     ⚠️  Сертификат истекает через {$daysLeft} дней");
-                } else {
-                    $this->line("     📅 Осталось: {$daysLeft} дней");
-                }
-                
+                $this->info('✅ SSL сертификат валиден');
                 fclose($socket);
             } else {
-                $this->error("  ❌ SSL соединение неудачно: {$errstr}");
+                $this->error("❌ Ошибка SSL: {$errstr} ({$errno})");
             }
         } catch (\Exception $e) {
-            $this->error("  ❌ Ошибка проверки SSL: {$e->getMessage()}");
+            $this->error('❌ Ошибка проверки SSL: ' . $e->getMessage());
         }
     }
 
     private function sendTestUpdate(string $webhookUrl, string $secret): void
     {
-        // Создаем тестовое обновление
+        $this->line('📤 Отправка тестового обновления...');
+
         $testUpdate = [
-            'update_id' => 999999999,
+            'update_id' => 123456789,
             'message' => [
-                'message_id' => 999999,
-                'date' => time(),
-                'text' => '/test_webhook_' . time(),
+                'message_id' => 1,
                 'from' => [
-                    'id' => 999999999,
+                    'id' => 123456789,
                     'is_bot' => false,
-                    'first_name' => 'TegBot',
-                    'username' => 'tegbot_test'
+                    'first_name' => 'Test',
+                    'username' => 'testuser'
                 ],
                 'chat' => [
-                    'id' => 999999999,
-                    'type' => 'private',
-                    'first_name' => 'TegBot',
-                    'username' => 'tegbot_test'
-                ]
+                    'id' => 123456789,
+                    'first_name' => 'Test',
+                    'username' => 'testuser',
+                    'type' => 'private'
+                ],
+                'date' => time(),
+                'text' => '/test'
             ]
         ];
 
         try {
-            $http = Http::timeout(10)
-                ->withHeaders([
-                    'X-Telegram-Bot-Api-Secret-Token' => $secret,
-                    'Content-Type' => 'application/json'
-                ]);
-            
-            if ($this->option('no-ssl')) {
-                $http = $http->withOptions([
-                    'verify' => false,
-                    'curl' => [
-                        CURLOPT_SSL_VERIFYPEER => false,
-                        CURLOPT_SSL_VERIFYHOST => false,
-                    ]
-                ]);
+            $headers = ['Content-Type' => 'application/json'];
+            if ($secret) {
+                $headers['X-Telegram-Bot-Api-Secret-Token'] = $secret;
             }
-            
-            $response = $http->post($webhookUrl, $testUpdate);
 
-            $this->info("  📤 Отправлен тестовый запрос");
-            $this->line("  📥 Ответ: HTTP {$response->status()}");
-            
+            $response = Http::timeout(10)
+                ->withHeaders($headers)
+                ->post($webhookUrl, $testUpdate);
+
             if ($response->successful()) {
-                $this->info("  ✅ Webhook принял запрос");
+                $this->info('✅ Тестовое обновление отправлено успешно');
             } else {
-                $this->warn("  ⚠️  Неожиданный статус ответа");
+                $this->warn("⚠️  Ответ сервера: {$response->status()}");
             }
-            
         } catch (\Exception $e) {
-            $this->error("  ❌ Ошибка отправки: {$e->getMessage()}");
+            $this->error('❌ Ошибка отправки тестового обновления: ' . $e->getMessage());
         }
     }
 } 

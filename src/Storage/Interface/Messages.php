@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Storage\Interface;
+namespace Bot\Storage\Interface;
 
 interface Messages
 {

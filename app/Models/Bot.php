@@ -13,7 +13,8 @@ class Bot extends Model
 
     protected $fillable = [
         'name',
-        'token',
+        'dev_token',
+        'prod_token',
         'username',
         'first_name',
         'description',
@@ -32,9 +33,74 @@ class Bot extends Model
     ];
 
     protected $hidden = [
-        'token',
+        'dev_token',
+        'prod_token',
         'webhook_secret',
     ];
+
+    /**
+     * Получить текущее окружение из env
+     */
+    public static function getCurrentEnvironment(): string
+    {
+        return env('APP_ENV', 'dev');
+    }
+
+    /**
+     * Получить токен для текущего окружения
+     */
+    public function getTokenAttribute(): ?string
+    {
+        $environment = self::getCurrentEnvironment();
+        return $this->getTokenForEnvironment($environment);
+    }
+
+    /**
+     * Получить токен для указанного окружения
+     */
+    public function getTokenForEnvironment(string $environment): ?string
+    {
+        return $environment === 'prod' ? $this->prod_token : $this->dev_token;
+    }
+
+    /**
+     * Установить токен для указанного окружения
+     */
+    public function setTokenForEnvironment(string $environment, string $token): void
+    {
+        if ($environment === 'prod') {
+            $this->prod_token = $token;
+        } else {
+            $this->dev_token = $token;
+        }
+    }
+
+    /**
+     * Проверить наличие токена для указанного окружения
+     */
+    public function hasTokenForEnvironment(string $environment): bool
+    {
+        $token = $this->getTokenForEnvironment($environment);
+        return !empty($token);
+    }
+
+    /**
+     * Получить маскированный токен для отображения
+     */
+    public function getMaskedTokenAttribute(): string
+    {
+        $token = $this->getTokenAttribute();
+        return $token ? substr($token, 0, 10) . '...' : 'Не установлен';
+    }
+
+    /**
+     * Получить маскированный токен для указанного окружения
+     */
+    public function getMaskedTokenForEnvironment(string $environment): string
+    {
+        $token = $this->getTokenForEnvironment($environment);
+        return $token ? substr($token, 0, 10) . '...' : 'Не установлен';
+    }
 
     /**
      * Получить класс бота
@@ -53,14 +119,6 @@ class Bot extends Model
     }
 
     /**
-     * Получить маскированный токен для отображения
-     */
-    public function getMaskedTokenAttribute(): string
-    {
-        return substr($this->token, 0, 10) . '...';
-    }
-
-    /**
      * Активные боты
      */
     public function scopeEnabled($query)
@@ -69,11 +127,13 @@ class Bot extends Model
     }
 
     /**
-     * Поиск бота по токену
+     * Поиск бота по токену (для обратной совместимости)
      */
     public function scopeByToken($query, string $token)
     {
-        return $query->where('token', $token);
+        return $query->where(function($q) use ($token) {
+            $q->where('dev_token', $token)->orWhere('prod_token', $token);
+        });
     }
 
     /**
@@ -82,5 +142,14 @@ class Bot extends Model
     public function scopeByName($query, string $name)
     {
         return $query->where('name', $name);
+    }
+
+    /**
+     * Боты с токенами для указанного окружения
+     */
+    public function scopeWithTokenForEnvironment($query, string $environment)
+    {
+        $field = $environment === 'prod' ? 'prod_token' : 'dev_token';
+        return $query->whereNotNull($field)->where($field, '!=', '');
     }
 } 

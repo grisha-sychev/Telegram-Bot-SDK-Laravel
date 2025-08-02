@@ -1,10 +1,10 @@
 <?php
 
-namespace Teg\Api;
+namespace Bot\Api;
 
-use Teg\Support\Facades\Services;
+use Bot\Support\Facades\Services;
 use Illuminate\Support\Facades\Http;
-use Teg\Types\DynamicData;
+use Bot\Types\DynamicData;
 
 class Core
 {

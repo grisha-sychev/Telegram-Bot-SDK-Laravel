@@ -5,7 +5,7 @@ use App\Models\Bot;
 
 /*
 |--------------------------------------------------------------------------
-| TegBot Webhook Routes  
+| Bot Webhook Routes  
 |--------------------------------------------------------------------------
 */
 
@@ -20,7 +20,7 @@ Route::post('/webhook/{botName}', function ($botName) {
         $botModel = Bot::byName($botName)->where('enabled', true)->first();
         
         if (!$botModel) {
-            \Log::warning("TegBot: Bot not found or disabled: {$botName}");
+            \Log::warning("Bot: Bot not found or disabled: {$botName}");
             return response()->json(['error' => 'Bot not found or disabled'], 404);
         }
 
@@ -28,7 +28,7 @@ Route::post('/webhook/{botName}', function ($botName) {
         $class = $botModel->getBotClass();
 
         if (!class_exists($class)) {
-            \Log::error("TegBot: Bot class not found: {$class}");
+            \Log::error("Bot: Bot class not found: {$class}");
             return response()->json(['error' => 'Bot class not found'], 404);
         }
         
@@ -50,7 +50,7 @@ Route::post('/webhook/{botName}', function ($botName) {
             $bot->setBotModel($botModel);
         }
         
-        \Log::info("TegBot: Processing webhook for bot: {$botName}");
+        \Log::info("Bot: Processing webhook for bot: {$botName}");
         
         // Запускаем обработку (приоритет: safeMain > run > main)
         if (method_exists($bot, 'safeMain')) {
@@ -60,12 +60,12 @@ Route::post('/webhook/{botName}', function ($botName) {
         } elseif (method_exists($bot, 'main')) {
             return $bot->main();
         } else {
-            \Log::error("TegBot: Bot {$class} has no safeMain(), main() or run() method");
+            \Log::error("Bot: Bot {$class} has no safeMain(), main() or run() method");
             return response()->json(['error' => 'Bot method not found'], 500);
         }
         
     } catch (\Exception $e) {
-        \Log::error("TegBot: Error processing webhook for {$botName}: " . $e->getMessage(), [
+        \Log::error("Bot: Error processing webhook for {$botName}: " . $e->getMessage(), [
             'bot' => $botName,
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
@@ -73,4 +73,4 @@ Route::post('/webhook/{botName}', function ($botName) {
         
         return response()->json(['error' => 'Internal server error'], 500);
     }
-})->name('tegbot.webhook.modern');
+})->name('bot.webhook.modern'); 

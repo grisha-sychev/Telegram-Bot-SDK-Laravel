@@ -27,10 +27,20 @@ class SetupCommand extends Command
             return 1;
         }
 
-        // Проверяем токен и получаем информацию о боте
+        // Проверяем токены и получаем информацию о боте
         $apiHost = $this->option('api-host') ?: 'https://api.telegram.org';
         $noSsl = $botData['no_ssl'] ?? $this->option('no-ssl') ?? false;
-        $botInfo = $this->getBotInfo($botData['token'], $apiHost, $noSsl);
+        
+        // Проверяем токен для текущего окружения
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        $currentToken = $botData['dev_token'] ?? $botData['prod_token'];
+        
+        if (!$currentToken) {
+            $this->error("❌ Токен для текущего окружения ({$currentEnvironment}) обязателен");
+            return 1;
+        }
+
+        $botInfo = $this->getBotInfo($currentToken, $apiHost, $noSsl);
         if (!$botInfo) {
             return 1;
         }
@@ -69,7 +79,8 @@ class SetupCommand extends Command
         $this->newLine();
         $this->info('✅ Настройка бота завершена!');
         $this->line("🤖 Бот '{$bot->name}' успешно добавлен");
-        $this->line('📖 Документация: vendor/tegbot/tegbot/docs/');
+        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+        $this->line('📖 Документация: vendor/bot/bot/docs/');
         $this->line('🔍 Проверка: php artisan bot:health');
 
         return 0;
@@ -82,12 +93,14 @@ class SetupCommand extends Command
             if ($bots->isNotEmpty()) {
                 $this->info('📋 Существующие боты:');
                 $this->table(
-                    ['ID', 'Имя', 'Username', 'Статус', 'Создан'],
+                    ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Статус', 'Создан'],
                     $bots->map(function ($bot) {
                         return [
                             $bot->id,
                             $bot->name,
                             '@' . $bot->username,
+                            $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
+                            $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
                             $bot->enabled ? '✅ Активен' : '❌ Отключен',
                             $bot->created_at->format('d.m.Y H:i')
                         ];
@@ -129,24 +142,38 @@ class SetupCommand extends Command
             // Игнорируем ошибку если таблица не существует
         }
 
-        // Запрашиваем токен
-        $token = $this->ask('Введите токен бота (полученный от @BotFather)');
-        if (!$token) {
-            $this->error('❌ Токен бота обязателен');
-            return null;
-        }
-
-        // Проверяем формат токена
-        if (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
-            $this->error('❌ Неверный формат токена');
+        // Запрашиваем токен для разработки
+        $this->info('🔧 Токен для разработки (dev):');
+        $devToken = $this->ask('Введите токен бота для разработки (полученный от @BotFather)');
+        if ($devToken && !preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $devToken)) {
+            $this->error('❌ Неверный формат токена для разработки');
             $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
             return null;
         }
 
-        // Проверяем уникальность токена
+        // Запрашиваем токен для продакшена
+        $this->info('🚀 Токен для продакшена (prod):');
+        $prodToken = $this->ask('Введите токен бота для продакшена (полученный от @BotFather)');
+        if ($prodToken && !preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $prodToken)) {
+            $this->error('❌ Неверный формат токена для продакшена');
+            $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
+            return null;
+        }
+
+        // Проверяем, что хотя бы один токен указан
+        if (!$devToken && !$prodToken) {
+            $this->error('❌ Необходимо указать хотя бы один токен (dev или prod)');
+            return null;
+        }
+
+        // Проверяем уникальность токенов
         try {
-            if (Bot::byToken($token)->exists()) {
-                $this->error('❌ Бот с таким токеном уже существует');
+            if ($devToken && Bot::byToken($devToken)->exists()) {
+                $this->error('❌ Бот с таким dev токеном уже существует');
+                return null;
+            }
+            if ($prodToken && Bot::byToken($prodToken)->exists()) {
+                $this->error('❌ Бот с таким prod токеном уже существует');
                 return null;
             }
         } catch (\Exception $e) {
@@ -178,7 +205,8 @@ class SetupCommand extends Command
 
         return [
             'name' => $name,
-            'token' => $token,
+            'dev_token' => $devToken,
+            'prod_token' => $prodToken,
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
             'webhook_url' => $webhookUrl,
@@ -361,7 +389,7 @@ class {$className} extends AbstractBot
         // Генерируем secret если не установлен
         $secret = $bot->webhook_secret ?? Str::random(32);
 
-        // Устанавливаем webhook
+        // Устанавливаем webhook используя токен текущего окружения
         $this->info('🔧 Настройка webhook...');
         $this->line("  🌐 API хост: {$apiHost}");
         if ($noSsl) {
@@ -384,7 +412,8 @@ class {$className} extends AbstractBot
                 $payload['secret_token'] = $secret;
             }
 
-            $url = rtrim($apiHost, '/') . "/bot{$bot->token}/setWebhook";
+            $token = $bot->getTokenAttribute();
+            $url = rtrim($apiHost, '/') . "/bot{$token}/setWebhook";
 
             $http = Http::timeout(30);
             if ($noSsl) {
@@ -422,14 +451,14 @@ class {$className} extends AbstractBot
     {
         $this->info('⚙️  Проверка конфигурации...');
 
-        $configPath = config_path('tegbot.php');
+        $configPath = config_path('bot.php');
 
         if (!file_exists($configPath)) {
             $this->warn('⚠️  Конфигурационный файл не найден');
 
             if ($this->confirm('Опубликовать конфигурацию?', true)) {
                 $this->call('vendor:publish', [
-                    '--provider' => 'Teg\Providers\TegbotServiceProvider',
+                    '--provider' => 'Bot\Providers\BotServiceProvider',
                     '--tag' => 'config'
                 ]);
             }
@@ -443,9 +472,9 @@ class {$className} extends AbstractBot
         $this->info('📁 Создание директорий...');
 
         $directories = [
-            storage_path('app/tegbot/downloads'),
-            storage_path('app/tegbot/temp'),
-            storage_path('logs/tegbot'),
+            storage_path('app/bot/downloads'),
+            storage_path('app/bot/temp'),
+            storage_path('logs/bot'),
         ];
 
         foreach ($directories as $dir) {

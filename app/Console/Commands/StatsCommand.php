@@ -6,64 +6,107 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Models\Bot;
 
 class StatsCommand extends Command
 {
     protected $signature = 'bot:stats 
+                            {--bot= : Имя конкретного бота для статистики}
                             {--period=24h : Period for statistics (1h, 24h, 7d, 30d)}
                             {--format=table : Output format (table, json)}
                             {--detailed : Show detailed statistics}';
     
-    protected $description = 'Статистика TegBot';
+    protected $description = 'Статистика Bot';
 
     public function handle()
     {
         $this->info('📊 Bot Statistics');
         $this->newLine();
 
+        $botName = $this->option('bot');
         $period = $this->option('period');
         $format = $this->option('format');
         $detailed = $this->option('detailed');
 
-        $stats = $this->gatherStatistics($period, $detailed);
+        // Если указан конкретный бот
+        if ($botName) {
+            $bot = Bot::byName($botName)->first();
+            if (!$bot) {
+                $this->error("❌ Бот '{$botName}' не найден");
+                return 1;
+            }
+            $stats = $this->gatherBotStatistics($bot, $period, $detailed);
+        } else {
+            // Статистика по всем ботам
+            $bots = Bot::all();
+            if ($bots->isEmpty()) {
+                $this->warn('⚠️  Нет зарегистрированных ботов');
+                $this->line('💡 Используйте команду: php artisan bot:new');
+                return 0;
+            }
+            $stats = $this->gatherAllBotsStatistics($bots, $period, $detailed);
+        }
 
         if ($format === 'json') {
             $this->line(json_encode($stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         } else {
-            $this->displayStatsTable($stats, $period, $detailed);
+            $this->displayStatsTable($stats, $period, $detailed, $botName);
         }
 
         return 0;
     }
 
-    private function gatherStatistics(string $period, bool $detailed): array
+    private function gatherBotStatistics(Bot $bot, string $period, bool $detailed): array
     {
-        $stats = [
-            'bot_info' => $this->getBotInfo(),
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        
+        return [
+            'bot_info' => $this->getBotInfo($bot),
+            'environment' => $currentEnvironment,
             'system' => $this->getSystemStats(),
             'performance' => $this->getPerformanceStats($period),
             'errors' => $this->getErrorStats($period),
+            'webhook' => $this->getWebhookStats($bot),
         ];
+    }
 
-        if ($detailed) {
-            $stats['detailed'] = [
-                'webhook' => $this->getWebhookStats(),
-                'cache' => $this->getCacheStats(),
-                'storage' => $this->getStorageStats(),
-                'memory' => $this->getMemoryStats(),
+    private function gatherAllBotsStatistics($bots, string $period, bool $detailed): array
+    {
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        $botStats = [];
+        
+        foreach ($bots as $bot) {
+            $botStats[$bot->name] = [
+                'name' => $bot->name,
+                'username' => $bot->username,
+                'enabled' => $bot->enabled,
+                'has_token' => $bot->hasTokenForEnvironment($currentEnvironment),
+                'webhook_configured' => !empty($bot->webhook_url),
+                'class_exists' => $bot->botClassExists(),
             ];
         }
 
-        return $stats;
+        return [
+            'environment' => $currentEnvironment,
+            'total_bots' => $bots->count(),
+            'enabled_bots' => $bots->where('enabled', true)->count(),
+            'bots_with_token' => $bots->filter(function($bot) use ($currentEnvironment) {
+                return $bot->hasTokenForEnvironment($currentEnvironment);
+            })->count(),
+            'bots' => $botStats,
+            'system' => $this->getSystemStats(),
+        ];
     }
 
-    private function getBotInfo(): array
+    private function getBotInfo(Bot $bot): array
     {
-        $token = config('tegbot.token');
+        $currentEnvironment = Bot::getCurrentEnvironment();
         
-        if (!$token) {
-            return ['error' => 'Token not configured'];
+        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
+            return ['error' => "Token for environment '{$currentEnvironment}' not configured"];
         }
+
+        $token = $bot->getTokenForEnvironment($currentEnvironment);
 
         try {
             $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
@@ -98,53 +141,48 @@ class StatsCommand extends Command
         
         // В реальном приложении здесь должны быть данные из логов или БД
         return [
-            'period' => $period,
-            'total_requests' => $this->mockStat(100, 1000),
-            'successful_requests' => $this->mockStat(90, 950),
-            'failed_requests' => $this->mockStat(5, 50),
-            'average_response_time' => $this->mockStat(50, 200) . 'ms',
-            'requests_per_hour' => round($this->mockStat(10, 100) / max($hours, 1), 2),
-            'unique_users' => $this->mockStat(20, 200),
-            'unique_chats' => $this->mockStat(15, 150),
+            'messages_processed' => $this->mockStat(100, 1000),
+            'commands_executed' => $this->mockStat(50, 500),
+            'errors_count' => $this->mockStat(0, 10),
+            'avg_response_time' => $this->mockStat(100, 500),
+            'period_hours' => $hours,
         ];
     }
 
     private function getErrorStats(string $period): array
     {
-        // В реальном приложении здесь анализ логов
+        $hours = $this->periodToHours($period);
+        
         return [
             'total_errors' => $this->mockStat(0, 20),
-            'api_errors' => $this->mockStat(0, 10),
-            'webhook_errors' => $this->mockStat(0, 5),
-            'timeout_errors' => $this->mockStat(0, 3),
-            'rate_limit_hits' => $this->mockStat(0, 2),
+            'api_errors' => $this->mockStat(0, 5),
+            'webhook_errors' => $this->mockStat(0, 3),
             'last_error' => $this->getLastError(),
+            'period_hours' => $hours,
         ];
     }
 
-    private function getWebhookStats(): array
+    private function getWebhookStats(Bot $bot): array
     {
-        $token = config('tegbot.token');
+        $currentEnvironment = Bot::getCurrentEnvironment();
         
-        if (!$token) {
-            return ['error' => 'Token not configured'];
+        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
+            return ['error' => "Token for environment '{$currentEnvironment}' not configured"];
         }
 
+        $token = $bot->getTokenForEnvironment($currentEnvironment);
+
         try {
-            $response = Http::get("https://api.telegram.org/bot{$token}/getWebhookInfo");
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
             
             if ($response->successful()) {
-                $info = $response->json()['result'];
+                $webhook = $response->json()['result'];
                 return [
-                    'url' => $info['url'] ?? 'Not set',
-                    'has_custom_certificate' => $info['has_custom_certificate'] ?? false,
-                    'pending_update_count' => $info['pending_update_count'] ?? 0,
-                    'max_connections' => $info['max_connections'] ?? 0,
-                    'allowed_updates' => $info['allowed_updates'] ?? [],
-                    'last_error_date' => isset($info['last_error_date']) 
-                        ? date('Y-m-d H:i:s', $info['last_error_date']) 
-                        : null,
-                    'last_error_message' => $info['last_error_message'] ?? null,
+                    'url' => $webhook['url'] ?? null,
+                    'pending_updates' => $webhook['pending_update_count'] ?? 0,
+                    'last_error_date' => $webhook['last_error_date'] ?? null,
+                    'last_error_message' => $webhook['last_error_message'] ?? null,
+                    'max_connections' => $webhook['max_connections'] ?? null,
                 ];
             }
             
@@ -156,291 +194,179 @@ class StatsCommand extends Command
 
     private function getCacheStats(): array
     {
-        if (!config('tegbot.cache.enabled', false)) {
-            return ['status' => 'disabled'];
-        }
-
-        try {
-            $driver = config('tegbot.cache.driver', 'file');
-            $testKey = 'tegbot_stats_test_' . time();
-            
-            $start = microtime(true);
-            Cache::put($testKey, 'test', 10);
-            $writeTime = (microtime(true) - $start) * 1000;
-            
-            $start = microtime(true);
-            $value = Cache::get($testKey);
-            $readTime = (microtime(true) - $start) * 1000;
-            
-            Cache::forget($testKey);
-            
-            return [
-                'driver' => $driver,
-                'status' => 'working',
-                'write_time' => round($writeTime, 2) . 'ms',
-                'read_time' => round($readTime, 2) . 'ms',
-                'test_successful' => $value === 'test',
-            ];
-        } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'error' => $e->getMessage(),
-            ];
-        }
+        return [
+            'cache_hits' => $this->mockStat(1000, 5000),
+            'cache_misses' => $this->mockStat(50, 200),
+            'cache_size' => $this->mockStat(1024 * 1024, 10 * 1024 * 1024),
+            'cache_driver' => config('cache.default'),
+        ];
     }
 
     private function getStorageStats(): array
     {
-        $downloadPath = config('tegbot.files.download_path', storage_path('app/tegbot/downloads'));
-        
-        if (!is_dir($downloadPath)) {
-            return ['error' => 'Download directory not found'];
-        }
-
-        $totalSize = 0;
-        $fileCount = 0;
-        
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($downloadPath, \RecursiveDirectoryIterator::SKIP_DOTS)
-        );
-        
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $totalSize += $file->getSize();
-                $fileCount++;
-            }
-        }
+        $downloadPath = config('bot.files.download_path', storage_path('app/bot/downloads'));
+        $tempPath = config('bot.files.temp_path', storage_path('app/bot/temp'));
         
         return [
-            'download_path' => $downloadPath,
-            'total_files' => $fileCount,
-            'total_size' => $this->formatFileSize($totalSize),
-            'available_space' => $this->formatFileSize(disk_free_space($downloadPath)),
-            'is_writable' => is_writable($downloadPath),
+            'downloads_size' => is_dir($downloadPath) ? $this->formatFileSize($this->getDirectorySize($downloadPath)) : '0 B',
+            'temp_size' => is_dir($tempPath) ? $this->formatFileSize($this->getDirectorySize($tempPath)) : '0 B',
+            'downloads_count' => is_dir($downloadPath) ? count(scandir($downloadPath)) - 2 : 0,
+            'temp_count' => is_dir($tempPath) ? count(scandir($tempPath)) - 2 : 0,
         ];
     }
 
     private function getMemoryStats(): array
     {
-        $current = memory_get_usage(true);
-        $peak = memory_get_peak_usage(true);
-        $limit = $this->parseMemoryLimit(ini_get('memory_limit'));
-        
         return [
-            'current_usage' => $this->formatFileSize($current),
-            'peak_usage' => $this->formatFileSize($peak),
-            'memory_limit' => $limit > 0 ? $this->formatFileSize($limit) : 'unlimited',
-            'usage_percentage' => $limit > 0 ? round(($current / $limit) * 100, 1) : null,
-            'available' => $limit > 0 ? $this->formatFileSize($limit - $current) : 'unlimited',
+            'current_usage' => $this->formatFileSize(memory_get_usage(true)),
+            'peak_usage' => $this->formatFileSize(memory_get_peak_usage(true)),
+            'limit' => ini_get('memory_limit'),
+            'free_memory' => $this->formatFileSize($this->parseMemoryLimit(ini_get('memory_limit')) - memory_get_usage(true)),
         ];
     }
 
-    private function displayStatsTable(array $stats, string $period, bool $detailed): void
+    private function displayStatsTable(array $stats, string $period, bool $detailed, string $botName = null): void
     {
-        // Bot Info
-        if (isset($stats['bot_info']['username'])) {
-            $bot = $stats['bot_info'];
-            $this->info("🤖 Bot: @{$bot['username']} ({$bot['first_name']})");
-            $this->line("   ID: {$bot['id']}");
-            $this->newLine();
-        }
-
-        // Performance Stats
-        $perf = $stats['performance'];
-        $this->info("📈 Performance ({$period}):");
-        $this->table(
-            ['Metric', 'Value'],
-            [
-                ['Total Requests', $perf['total_requests']],
-                ['Successful', $perf['successful_requests']],
-                ['Failed', $perf['failed_requests']],
-                ['Avg Response Time', $perf['average_response_time']],
-                ['Requests/Hour', $perf['requests_per_hour']],
-                ['Unique Users', $perf['unique_users']],
-                ['Unique Chats', $perf['unique_chats']],
-            ]
-        );
-
-        // Error Stats
-        if ($stats['errors']['total_errors'] > 0) {
-            $this->newLine();
-            $this->warn("⚠️  Errors ({$period}):");
-            $errors = $stats['errors'];
-            $this->table(
-                ['Error Type', 'Count'],
-                [
-                    ['Total Errors', $errors['total_errors']],
-                    ['API Errors', $errors['api_errors']],
-                    ['Webhook Errors', $errors['webhook_errors']],
-                    ['Timeout Errors', $errors['timeout_errors']],
-                    ['Rate Limit Hits', $errors['rate_limit_hits']],
-                ]
-            );
-        }
-
-        // System Stats
-        $this->newLine();
-        $system = $stats['system'];
-        $this->info('💻 System:');
-        $this->line("   PHP: {$system['php_version']}");
-        $this->line("   Laravel: {$system['laravel_version']}");
-        $this->line("   Memory: " . $this->formatFileSize($system['memory_usage']));
-        $this->line("   Environment: {$system['environment']}");
-
-        // Detailed stats
-        if ($detailed && isset($stats['detailed'])) {
-            $this->displayDetailedStats($stats['detailed']);
+        if ($botName) {
+            $this->displaySingleBotStats($stats, $period, $detailed);
+        } else {
+            $this->displayAllBotsStats($stats, $period, $detailed);
         }
     }
 
-    private function displayDetailedStats(array $detailed): void
+    private function displaySingleBotStats(array $stats, string $period, bool $detailed): void
     {
+        $this->info('🤖 Информация о боте:');
+        if (isset($stats['bot_info']['error'])) {
+            $this->error("  ❌ {$stats['bot_info']['error']}");
+        } else {
+            $this->line("  📝 Имя: {$stats['bot_info']['first_name']}");
+            $this->line("  🆔 Username: @{$stats['bot_info']['username']}");
+            $this->line("  🌍 Окружение: {$stats['environment']}");
+        }
+
         $this->newLine();
-        $this->info('🔍 Detailed Information:');
+        $this->info('📊 Производительность:');
+        $this->table(
+            ['Метрика', 'Значение'],
+            [
+                ['Обработано сообщений', $stats['performance']['messages_processed']],
+                ['Выполнено команд', $stats['performance']['commands_executed']],
+                ['Ошибок', $stats['performance']['errors_count']],
+                ['Среднее время ответа', $stats['performance']['avg_response_time'] . 'ms'],
+                ['Период', $period],
+            ]
+        );
 
-        // Webhook
-        if (isset($detailed['webhook']['url'])) {
-            $webhook = $detailed['webhook'];
-            $this->line("   🌐 Webhook: {$webhook['url']}");
-            $this->line("   📊 Pending: {$webhook['pending_update_count']}");
-            if ($webhook['last_error_message']) {
-                $this->warn("   ❌ Last Error: {$webhook['last_error_message']}");
+        if ($detailed) {
+            $this->displayDetailedStats($stats);
+        }
+    }
+
+    private function displayAllBotsStats(array $stats, string $period, bool $detailed): void
+    {
+        $this->info('🤖 Общая статистика:');
+        $this->line("  🌍 Окружение: {$stats['environment']}");
+        $this->line("  📊 Всего ботов: {$stats['total_bots']}");
+        $this->line("  ✅ Активных: {$stats['enabled_bots']}");
+        $this->line("  🗝️  С токенами: {$stats['bots_with_token']}");
+
+        $this->newLine();
+        $this->info('📋 Список ботов:');
+        $this->table(
+            ['Имя', 'Username', 'Статус', 'Токен', 'Webhook', 'Класс'],
+            array_map(function($bot) {
+                return [
+                    $bot['name'],
+                    '@' . $bot['username'],
+                    $bot['enabled'] ? '✅' : '❌',
+                    $bot['has_token'] ? '✅' : '❌',
+                    $bot['webhook_configured'] ? '✅' : '❌',
+                    $bot['class_exists'] ? '✅' : '❌',
+                ];
+            }, $stats['bots'])
+        );
+    }
+
+    private function displayDetailedStats(array $stats): void
+    {
+        if (isset($stats['webhook'])) {
+            $this->newLine();
+            $this->info('🌐 Webhook статистика:');
+            if (isset($stats['webhook']['error'])) {
+                $this->error("  ❌ {$stats['webhook']['error']}");
+            } else {
+                $this->line("  🌐 URL: {$stats['webhook']['url']}");
+                $this->line("  📊 Ожидающие обновления: {$stats['webhook']['pending_updates']}");
+                if ($stats['webhook']['last_error_message']) {
+                    $this->line("  ❌ Последняя ошибка: {$stats['webhook']['last_error_message']}");
+                }
             }
-        }
-
-        // Cache
-        if ($detailed['cache']['status'] === 'working') {
-            $cache = $detailed['cache'];
-            $this->line("   💾 Cache: {$cache['driver']} (W:{$cache['write_time']}, R:{$cache['read_time']})");
-        }
-
-        // Storage
-        if (isset($detailed['storage']['total_files'])) {
-            $storage = $detailed['storage'];
-            $this->line("   📁 Files: {$storage['total_files']} ({$storage['total_size']})");
-        }
-
-        // Memory
-        $memory = $detailed['memory'];
-        $this->line("   🧠 Memory: {$memory['current_usage']} / {$memory['memory_limit']}");
-        if ($memory['usage_percentage']) {
-            $this->line("      Usage: {$memory['usage_percentage']}%");
         }
     }
 
     private function getLastError(): ?string
     {
-        $logPath = storage_path('logs/laravel.log');
-        
-        if (!file_exists($logPath)) {
-            return null;
-        }
-
-        try {
-            $handle = fopen($logPath, 'r');
-            $lastLine = '';
-            
-            if ($handle) {
-                while (($line = fgets($handle)) !== false) {
-                    if (str_contains($line, 'ERROR') || str_contains($line, 'CRITICAL')) {
-                        $lastLine = trim($line);
-                    }
-                }
-                fclose($handle);
-            }
-            
-            if ($lastLine) {
-                // Парсим дату из лога Laravel
-                preg_match('/\[(.*?)\]/', $lastLine, $matches);
-                return $matches[1] ?? 'Unknown time';
-            }
-            
-            return null;
-        } catch (\Exception $e) {
-            return 'Error reading logs';
-        }
+        // В реальном приложении здесь должна быть логика получения последней ошибки
+        return null;
     }
 
     private function getUptime(): string
     {
-        // Простая реализация - время с последнего изменения конфига
-        $configPath = config_path('tegbot.php');
-        
-        if (file_exists($configPath)) {
-            $lastModified = filemtime($configPath);
-            $uptime = time() - $lastModified;
-            
-            return $this->formatTimeDiff($uptime);
-        }
-        
+        // В реальном приложении здесь должна быть логика получения времени работы
         return 'Unknown';
     }
 
     private function periodToHours(string $period): int
     {
-        $mapping = [
-            '1h' => 1,
-            '24h' => 24,
-            '7d' => 168,
-            '30d' => 720,
-        ];
+        $value = (int) $period;
+        $unit = substr($period, -1);
         
-        return $mapping[$period] ?? 24;
+        switch ($unit) {
+            case 'h': return $value;
+            case 'd': return $value * 24;
+            default: return 24;
+        }
     }
 
     private function mockStat(int $min, int $max): int
     {
-        // В реальном приложении здесь должны быть данные из БД или логов
         return rand($min, $max);
     }
 
     private function parseMemoryLimit(string $limit): int
     {
-        if ($limit === '-1') return 0;
+        $value = (int) $limit;
+        $unit = strtolower(substr($limit, -1));
         
-        $limit = trim($limit);
-        $bytes = (int) $limit;
-        
-        if (preg_match('/(\d+)(.)/', $limit, $matches)) {
-            $bytes = (int) $matches[1];
-            switch (strtoupper($matches[2])) {
-                case 'G': $bytes *= 1024;
-                case 'M': $bytes *= 1024;
-                case 'K': $bytes *= 1024;
-            }
+        switch ($unit) {
+            case 'k': return $value * 1024;
+            case 'm': return $value * 1024 * 1024;
+            case 'g': return $value * 1024 * 1024 * 1024;
+            default: return $value;
         }
-        
-        return $bytes;
     }
 
     private function formatFileSize(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        $i = 0;
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
         
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
+        $bytes /= pow(1024, $pow);
         
-        return round($bytes, 1) . ' ' . $units[$i];
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 
-    private function formatTimeDiff(int $seconds): string
+    private function getDirectorySize(string $path): int
     {
-        if ($seconds < 60) {
-            return "{$seconds}s";
-        } elseif ($seconds < 3600) {
-            $minutes = floor($seconds / 60);
-            return "{$minutes}m";
-        } elseif ($seconds < 86400) {
-            $hours = floor($seconds / 3600);
-            $minutes = floor(($seconds % 3600) / 60);
-            return "{$hours}h {$minutes}m";
-        } else {
-            $days = floor($seconds / 86400);
-            $hours = floor(($seconds % 86400) / 3600);
-            return "{$days}d {$hours}h";
+        $size = 0;
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path)) as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
         }
+        return $size;
     }
 } 

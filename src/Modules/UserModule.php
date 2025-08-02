@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Modules;
+namespace Bot\Modules;
 
 use App\Models\UserTelegram;
 use Illuminate\Support\Facades\Log;

@@ -1,10 +1,10 @@
 <?php
 
-namespace Teg\Modules;
+namespace Bot\Modules;
 
-use Teg\Storage\MessagesRedis;
-use Teg\Storage\MessagesSQL;
-use Teg\Modules\Enum\Connect;
+use Bot\Storage\MessagesRedis;
+use Bot\Storage\MessagesSQL;
+use Bot\Modules\Enum\Connect;
 use App\Models\Message;
 use Illuminate\Support\Facades\Log;
 use Exception;

@@ -8,7 +8,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Teg\\": ["src/", "app/"]
+            "Bot\\": ["src/", "app/"]
         },
         "files": [
             "src/Helper/Functions.php"
@@ -17,7 +17,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Teg\\Providers\\TegbotServiceProvider"
+                "Bot\\Providers\\BotServiceProvider"
             ]
         }
     }

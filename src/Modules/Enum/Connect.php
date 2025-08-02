@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Modules\Enum;
+namespace Bot\Modules\Enum;
 
 enum Connect
 {

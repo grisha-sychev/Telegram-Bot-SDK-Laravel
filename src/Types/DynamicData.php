@@ -1,6 +1,6 @@
 <?php
 
-namespace Teg\Types;
+namespace Bot\Types;
 
 use Illuminate\Support\Arr;
 

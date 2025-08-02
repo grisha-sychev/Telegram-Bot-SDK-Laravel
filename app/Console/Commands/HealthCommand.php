@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Bot;
 
 class HealthCommand extends Command
@@ -154,12 +153,20 @@ class HealthCommand extends Command
 
     private function checkBot(Bot $bot, bool $noSsl = false, bool $verboseErrors = false): void
     {
+        $currentEnvironment = Bot::getCurrentEnvironment();
         $statusIcon = $bot->enabled ? '🟢' : '🔴';
         $status = $bot->enabled ? 'активен' : 'отключен';
         
         $this->line("{$statusIcon} Бот: {$bot->name} (@{$bot->username}) - {$status}");
         $this->line("  📝 Имя: {$bot->first_name}");
         $this->line("  🆔 ID: {$bot->bot_id}");
+        $this->line("  🌍 Окружение: {$currentEnvironment}");
+        
+        // Проверяем наличие токена для текущего окружения
+        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
+            $this->error("  ❌ Токен для окружения '{$currentEnvironment}' не установлен");
+            return;
+        }
         
         if (!$bot->enabled) {
             $this->warn("  ⚠️  Бот отключен");
@@ -167,7 +174,8 @@ class HealthCommand extends Command
         }
 
         // Проверяем API связность  
-        $apiStatus = $this->checkTelegramAPI($bot->token, $noSsl);
+        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        $apiStatus = $this->checkTelegramAPI($token, $noSsl);
         if ($apiStatus['status'] === 'ok') {
             $this->line("  ✅ API: Соединение OK");
             
@@ -229,6 +237,9 @@ class HealthCommand extends Command
 
     private function checkBotWebhook(Bot $bot, bool $noSsl = false): void
     {
+        $currentEnvironment = Bot::getCurrentEnvironment();
+        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        
         try {
             $http = Http::timeout(10);
             
@@ -242,7 +253,7 @@ class HealthCommand extends Command
                 ]);
             }
             
-            $response = $http->get("https://api.telegram.org/bot{$bot->token}/getWebhookInfo");
+            $response = $http->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
             
             if ($response->successful()) {
                 $webhook = $response->json()['result'];
@@ -252,17 +263,17 @@ class HealthCommand extends Command
                     
                     if ($webhook['pending_update_count'] > 0) {
                         $this->warn("  ⚠️  Ожидают обработки: {$webhook['pending_update_count']} сообщений");
-                    } else {
-                        $this->line("  ✅ Нет ожидающих сообщений");
                     }
                     
-                    if (!empty($webhook['last_error_message'])) {
-                        $errorDate = date('Y-m-d H:i:s', $webhook['last_error_date']);
-                        $this->error("  ❌ Последняя ошибка: {$errorDate} - {$webhook['last_error_message']}");
+                    if ($webhook['last_error_date']) {
+                        $errorDate = date('d.m.Y H:i:s', $webhook['last_error_date']);
+                        $this->error("  ❌ Последняя ошибка ({$errorDate}): {$webhook['last_error_message']}");
                     }
                 } else {
-                    $this->warn('  ⚠️  Webhook не настроен');
+                    $this->warn("  ⚠️  Webhook не настроен");
                 }
+            } else {
+                $this->error("  ❌ Не удалось получить информацию о webhook");
             }
         } catch (\Exception $e) {
             $this->error("  ❌ Ошибка проверки webhook: {$e->getMessage()}");
@@ -276,26 +287,26 @@ class HealthCommand extends Command
         $this->info("🔧 Конфигурация системы:");
         
         // Проверяем общие настройки
-        $logging = config('tegbot.logging.enabled', false);
+        $logging = config('bot.logging.enabled', false);
         $this->line('  📊 Логирование: ' . ($logging ? 'ВКЛЮЧЕНО' : 'ОТКЛЮЧЕНО'));
 
-        $fileStorage = config('tegbot.files.download_path', storage_path('app/tegbot'));
+        $fileStorage = config('bot.files.download_path', storage_path('app/bot'));
         $this->line("  📁 Хранилище файлов: " . basename($fileStorage));
 
-        $timeout = config('tegbot.api.timeout', 30);
+        $timeout = config('bot.api.timeout', 30);
         $this->line("  ⏱️  Таймаут API: {$timeout}s");
 
-        $retries = config('tegbot.api.retries', 3);
+        $retries = config('bot.api.retries', 3);
         $this->line("  🔄 Повторы при ошибках: {$retries}");
 
         // Проверяем кэширование
-        $cacheEnabled = config('tegbot.cache.enabled', false);
-        $cacheDriver = config('tegbot.cache.driver', 'file');
+        $cacheEnabled = config('bot.cache.enabled', false);
+        $cacheDriver = config('bot.cache.driver', 'file');
         $this->line("  💾 Кэширование: " . ($cacheEnabled ? "ВКЛЮЧЕНО ({$cacheDriver})" : 'ОТКЛЮЧЕНО'));
 
         // Проверяем очереди
-        $queueEnabled = config('tegbot.queue.enabled', false);
-        $queueDriver = config('tegbot.queue.connection', 'sync');
+        $queueEnabled = config('bot.queue.enabled', false);
+        $queueDriver = config('bot.queue.connection', 'sync');
         $this->line("  🚀 Очереди: " . ($queueEnabled ? "ВКЛЮЧЕНО ({$queueDriver})" : 'ОТКЛЮЧЕНО'));
         
         $this->newLine();
@@ -303,7 +314,7 @@ class HealthCommand extends Command
 
     private function checkStorage(): void
     {
-        $downloadPath = config('tegbot.files.download_path', storage_path('app/tegbot/downloads'));
+        $downloadPath = config('bot.files.download_path', storage_path('app/bot/downloads'));
         
         if (!is_dir($downloadPath)) {
             try {
@@ -344,10 +355,10 @@ class HealthCommand extends Command
         }
 
         // Проверка Redis (если используется)
-        if (config('tegbot.cache.enabled') && config('tegbot.cache.driver') === 'redis') {
+        if (config('bot.cache.enabled') && config('bot.cache.driver') === 'redis') {
             try {
-                Cache::store('redis')->put('tegbot_health_test', 'ok', 10);
-                $test = Cache::store('redis')->get('tegbot_health_test');
+                Cache::store('redis')->put('bot_health_test', 'ok', 10);
+                $test = Cache::store('redis')->get('bot_health_test');
                 
                 if ($test === 'ok') {
                     $this->line('  🔴 Redis: Подключен');

@@ -1,9 +1,9 @@
 <?php
 
-namespace Teg\Storage;
+namespace Bot\Storage;
 
 use App\Models\Message;
-use Teg\Storage\Interface\Messages;
+use Bot\Storage\Interface\Messages;
 
 /**
  * Класс для работы с сообщениями через базы данных

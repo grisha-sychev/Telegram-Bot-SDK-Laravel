@@ -1,8 +1,8 @@
 <?php
 
-namespace Teg\Api;
+namespace Bot\Api;
 
-use Teg\Support\Facades\Services;
+use Bot\Support\Facades\Services;
 
 class Basic extends Core
 {

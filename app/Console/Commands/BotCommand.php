@@ -57,15 +57,21 @@ class BotCommand extends Command
                 return 0;
             }
 
+            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info('🤖 Список ботов:');
+            $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+            $this->newLine();
+            
             $this->table(
-                ['ID', 'Имя', 'Username', 'Токен', 'Статус', 'Webhook', 'Создан'],
-                $bots->map(function ($bot) {
+                ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Текущий Токен', 'Статус', 'Webhook', 'Создан'],
+                $bots->map(function ($bot) use ($currentEnvironment) {
                     return [
                         $bot->id,
                         $bot->name,
                         '@' . $bot->username,
-                        $bot->masked_token,
+                        $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
+                        $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
+                        $bot->hasTokenForEnvironment($currentEnvironment) ? '✅' : '❌',
                         $bot->enabled ? '✅ Активен' : '❌ Отключен',
                         $bot->webhook_url ? '✅ Настроен' : '❌ Не настроен',
                         $bot->created_at->format('d.m.Y H:i')
@@ -102,13 +108,17 @@ class BotCommand extends Command
                 return 1;
             }
 
+            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info("🤖 Информация о боте '{$bot->name}':");
             $this->newLine();
 
             $this->line("  📝 Имя: {$bot->name}");
             $this->line("  🆔 Username: @{$bot->username}");
             $this->line("  🔢 ID: {$bot->bot_id}");
-            $this->line("  🗝️  Токен: {$bot->masked_token}");
+            $this->line("  🌍 Текущее окружение: {$currentEnvironment}");
+            $this->line("  🗝️  Dev Token: " . ($bot->hasTokenForEnvironment('dev') ? $bot->getMaskedTokenForEnvironment('dev') : '❌ Не установлен'));
+            $this->line("  🗝️  Prod Token: " . ($bot->hasTokenForEnvironment('prod') ? $bot->getMaskedTokenForEnvironment('prod') : '❌ Не установлен'));
+            $this->line("  🗝️  Текущий токен: " . ($bot->hasTokenForEnvironment($currentEnvironment) ? $bot->getMaskedTokenForEnvironment($currentEnvironment) : '❌ Не установлен'));
             $this->line("  📡 Статус: " . ($bot->enabled ? '✅ Активен' : '❌ Отключен'));
             
             if ($bot->description) {
@@ -264,13 +274,22 @@ class BotCommand extends Command
                 return 1;
             }
 
+            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info("🧪 Тестирование бота '{$bot->name}'...");
+            $this->line("🌍 Текущее окружение: {$currentEnvironment}");
             $this->newLine();
+
+            // Проверяем наличие токена для текущего окружения
+            if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
+                $this->error("❌ Токен для окружения '{$currentEnvironment}' не установлен");
+                return 1;
+            }
 
             // Тест API подключения
             $this->line('1. Проверка API подключения...');
             try {
-                $response = Http::timeout(10)->get("https://api.telegram.org/bot{$bot->token}/getMe");
+                $token = $bot->getTokenForEnvironment($currentEnvironment);
+                $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
                 
                 if ($response->successful()) {
                     $botInfo = $response->json()['result'];
@@ -298,7 +317,8 @@ class BotCommand extends Command
             $this->line('3. Проверка webhook...');
             if ($bot->webhook_url) {
                 try {
-                    $response = Http::timeout(10)->get("https://api.telegram.org/bot{$bot->token}/getWebhookInfo");
+                    $token = $bot->getTokenForEnvironment($currentEnvironment);
+                    $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getWebhookInfo");
                     
                     if ($response->successful()) {
                         $webhookInfo = $response->json()['result'];
