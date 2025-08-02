@@ -21,21 +21,23 @@ composer require tbot/laravel
 
 ### Публикация файлов
 
-# Стандартная публикация (пропускает существующие файлы)
+### Стандартная публикация (пропускает существующие файлы)
 ```bash
 php artisan bot:publish
 ```
-# Публикация с принудительным обновлением
+### Публикация с принудительным обновлением
 ```bash
 php artisan bot:publish --force
 ```
-# Публикация конкретных компонентов
+### Публикация конкретных компонентов
 ```bash
 php artisan bot:publish --tag=bot-config --force
 ```
+или
 ```bash
 php artisan bot:publish --tag=bot-app --force
 ```
+
 ### Миграции
 
 ```bash
