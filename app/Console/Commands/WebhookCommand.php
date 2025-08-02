@@ -311,10 +311,28 @@ class WebhookCommand extends Command
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
 
+        // Проверяем опцию --no-ssl
+        $noSsl = $this->option('no-ssl');
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
             // Удаляем старый webhook
             $this->info('🗑️  Удаление старого webhook...');
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->post("https://api.telegram.org/bot{$token}/deleteWebhook");
             
             if (!$response->successful()) {
                 $result = $response->json();
@@ -344,7 +362,18 @@ class WebhookCommand extends Command
                 $payload['secret_token'] = $secret;
             }
 
-            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+            $http = Http::timeout(30);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
 
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД (относительный путь)
@@ -393,10 +422,28 @@ class WebhookCommand extends Command
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
 
+        // Проверяем опцию --no-ssl
+        $noSsl = $this->option('no-ssl');
+        if ($noSsl) {
+            $this->warn('⚠️  SSL проверка отключена');
+        }
+
         try {
             // Удаляем старый webhook
             $this->info('🗑️  Удаление старого webhook...');
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/deleteWebhook");
+            
+            $http = Http::timeout(10);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+            
+            $response = $http->post("https://api.telegram.org/bot{$token}/deleteWebhook");
             
             if (!$response->successful()) {
                 $result = $response->json();
@@ -426,7 +473,18 @@ class WebhookCommand extends Command
                 $payload['secret_token'] = $secret;
             }
 
-            $response = Http::timeout(30)->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
+            $http = Http::timeout(30);
+            if ($noSsl) {
+                $http = $http->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]
+                ]);
+            }
+
+            $response = $http->post("https://api.telegram.org/bot{$token}/setWebhook", $payload);
 
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД (относительный путь)
