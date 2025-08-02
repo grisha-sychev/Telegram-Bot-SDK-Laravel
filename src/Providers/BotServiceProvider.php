@@ -73,10 +73,10 @@ class BotServiceProvider extends ServiceProvider
                 __DIR__ . '/../../app' => app_path(),
             ], ['bot-app', 'app']);
 
-            // Маршруты
-            $this->publishes([
-                __DIR__ . '/../../routes' => base_path('routes'),
-            ], ['bot-routes', 'routes']);
+            // Маршруты (не публикуем bot.php чтобы избежать конфликтов)
+            // $this->publishes([
+            //     __DIR__ . '/../../routes' => base_path('routes'),
+            // ], ['bot-routes', 'routes']);
 
             // Миграции
             $this->publishes([
@@ -93,7 +93,7 @@ class BotServiceProvider extends ServiceProvider
                 __DIR__ . '/../../app' => app_path(),
                 __DIR__ . '/../../config' => config_path(),
                 __DIR__ . '/../../database' => database_path(),
-                __DIR__ . '/../../routes' => base_path('routes'),
+                // __DIR__ . '/../../routes' => base_path('routes'), // Не публикуем routes чтобы избежать конфликтов
                 __DIR__ . '/../../resources' => base_path('resources'),
             ];
 

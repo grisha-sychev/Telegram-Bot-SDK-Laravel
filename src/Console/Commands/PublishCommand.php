@@ -122,7 +122,8 @@ class PublishCommand extends Command
                 
             case 'bot-routes':
             case 'routes':
-                $paths[$packagePath . '/routes'] = base_path('routes');
+                // Не публикуем routes чтобы избежать конфликтов
+                $this->warn("⚠️  Публикация routes отключена для избежания конфликтов");
                 break;
                 
             case 'bot-database':
@@ -142,7 +143,7 @@ class PublishCommand extends Command
                     $packagePath . '/app' => app_path(),
                     $packagePath . '/config' => config_path(),
                     $packagePath . '/database' => database_path(),
-                    $packagePath . '/routes' => base_path('routes'),
+                    // $packagePath . '/routes' => base_path('routes'), // Не публикуем routes
                     $packagePath . '/resources' => base_path('resources'),
                 ];
                 break;
