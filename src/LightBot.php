@@ -16,6 +16,8 @@ class LightBot extends Skeleton
     protected array $middleware = [];
     protected array $globalMiddleware = [];
     
+
+    
     /**
      * Разрешить обработку медиафайлов без текста
      * @var bool
@@ -55,6 +57,8 @@ class LightBot extends Skeleton
         
         // Регистрируем базовые middleware
         $this->registerDefaultMiddleware();
+        
+
     }
 
     /**
@@ -105,6 +109,8 @@ class LightBot extends Skeleton
         
         return isset($message) ? $message->getFrom()->getUsername() : (isset($callback) ? $callback->getFrom()->getUsername() : null);
     }
+
+
 
     /**
      * Получает текст сообщения

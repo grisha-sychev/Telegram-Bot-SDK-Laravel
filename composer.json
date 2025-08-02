@@ -1,18 +1,13 @@
 {
     "name": "tbot/laravel",
-    "description": "Telergam bot SDK package",
+    "description": "Telegram bot SDK package for Laravel",
     "type": "library",
     "license": "MIT",
-    "require": {
-        "stichoza/google-translate-php": "^5.2"
-    },
+    "require": {},
     "autoload": {
         "psr-4": {
-            "Bot\\": ["src/", "app/"]
-        },
-        "files": [
-            "src/Helper/Functions.php"
-        ]
+            "Bot\\": ["src/"]
+        }
     },
     "extra": {
         "laravel": {

@@ -82,10 +82,10 @@ class BotServiceProvider extends ServiceProvider
                 __DIR__ . '/../../database' => database_path(),
             ], ['bot-database', 'database', 'migrations']);
 
-            // Документация
+            // Ресурсы I18n
             $this->publishes([
-                __DIR__ . '/../../docs' => base_path('docs/bot'),
-            ], ['bot-docs', 'docs']);
+                __DIR__ . '/../../resources/lang' => base_path('resources/lang'),
+            ], ['bot-lang', 'lang']);
 
             // Все файлы сразу
             $pathsToPublish = [
@@ -93,6 +93,7 @@ class BotServiceProvider extends ServiceProvider
                 __DIR__ . '/../../config' => config_path(),
                 __DIR__ . '/../../database' => database_path(),
                 __DIR__ . '/../../routes' => base_path('routes'),
+                __DIR__ . '/../../resources' => base_path('resources'),
             ];
 
             $this->publishes($pathsToPublish, 'bot');

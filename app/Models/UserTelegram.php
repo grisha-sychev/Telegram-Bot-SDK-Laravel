@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 class UserTelegram extends Model
@@ -29,14 +28,6 @@ class UserTelegram extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-
-    /**
-     * Get messages for this user
-     */
-    public function messages(): HasMany
-    {
-        return $this->hasMany(Message::class, 'tg_id', 'telegram_id');
-    }
 
     /**
      * Get full name of the user
@@ -111,12 +102,11 @@ class UserTelegram extends Model
     }
 
     /**
-     * Get active users (users who sent messages in last N days)
+     * Get active users (users who were active in last N days)
+     * Note: Since we removed Message model, this now counts users who were created in last N days
      */
     public static function getActiveUsers(int $days = 7): int
     {
-        return self::whereHas('messages', function ($query) use ($days) {
-            $query->where('created_at', '>=', Carbon::now()->subDays($days));
-        })->count();
+        return self::where('created_at', '>=', Carbon::now()->subDays($days))->count();
     }
 }
