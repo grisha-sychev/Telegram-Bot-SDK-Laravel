@@ -64,10 +64,12 @@ class SetupCommand extends Command
         // Создаем класс бота если не существует
         $this->createBotClass($botData['name']);
 
-        // Настраиваем webhook
+        // Настраиваем webhook (автоматически использует домен текущего окружения)
         $webhookUrl = $botData['webhook_url'] ?: $this->option('webhook');
-        if ($webhookUrl || $this->confirm('Настроить webhook?', true)) {
+        if ($webhookUrl) {
             $this->setupWebhook($bot, $apiHost, $webhookUrl, $noSsl);
+        } else {
+            $this->warn('⏭️  Webhook не настроен (домен для текущего окружения не указан)');
         }
 
         // Проверяем и создаем конфигурацию
@@ -211,14 +213,17 @@ class SetupCommand extends Command
         // Запрашиваем отключение SSL проверки (опционально)
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
 
-        // Запрашиваем домен для webhook (опционально) 
+        // Автоматически определяем домен для webhook на основе текущего окружения
         $webhookUrl = $this->option('webhook');
         if (!$webhookUrl) {
-            $defaultDomain = parse_url(url('/'), PHP_URL_SCHEME) . '://' . parse_url(url('/'), PHP_URL_HOST);
-            $domain = $this->ask('Домен для webhook (Enter = текущий домен)', $defaultDomain);
-            if ($domain) {
-                $webhookUrl = rtrim($domain, '/') . "/webhook/{$name}";
+            $currentEnvironment = Bot::getCurrentEnvironment();
+            $currentDomain = $currentEnvironment === 'prod' ? $prodDomain : $devDomain;
+            
+            if ($currentDomain) {
+                $webhookUrl = rtrim($currentDomain, '/') . "/webhook/{$name}";
+                $this->info("🌐 Webhook URL будет: {$webhookUrl}");
             } else {
+                $this->warn("⚠️  Домен для окружения '{$currentEnvironment}' не указан, webhook не будет настроен");
                 $webhookUrl = null;
             }
         }
@@ -378,12 +383,7 @@ class {$className} extends AbstractBot
     private function setupWebhook(Bot $bot, string $apiHost = 'https://api.telegram.org', string $webhookUrl = null, bool $noSsl = false): void
     {
         if (!$webhookUrl) {
-            $defaultUrl = url("/webhook/{$bot->name}");
-            $webhookUrl = $this->ask("Введите URL webhook", $defaultUrl);
-        }
-
-        if (!$webhookUrl) {
-            $this->warn('⏭️  Пропускаем настройку webhook');
+            $this->warn('⏭️  Пропускаем настройку webhook (URL не определен)');
             return;
         }
 
