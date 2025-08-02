@@ -75,6 +75,9 @@ class IsolationCommand extends Command
             return;
         }
         
+        // Проверяем конфликты webhook URL
+        $this->checkWebhookConflicts($bots);
+        
         foreach ($environments as $env) {
             $this->info("🌍 Проверка окружения: {$env}");
             
@@ -94,13 +97,15 @@ class IsolationCommand extends Command
                 $this->info("✅ Изолированные боты для '{$env}':");
                 $table = [];
                 foreach ($isolatedBots as $bot) {
+                    $webhookUrl = $bot->getFullWebhookUrlForEnvironment($env);
                     $table[] = [
                         $bot->name,
                         $bot->getMaskedTokenForEnvironment($env),
-                        $bot->getDomainForEnvironment($env)
+                        $bot->getDomainForEnvironment($env),
+                        $webhookUrl ?: 'Нет webhook URL'
                     ];
                 }
-                $this->table(['Имя', 'Токен', 'Домен'], $table);
+                $this->table(['Имя', 'Токен', 'Домен', 'Webhook URL'], $table);
             }
             
             // Показываем не изолированных ботов
@@ -110,19 +115,79 @@ class IsolationCommand extends Command
                 foreach ($nonIsolatedBots as $bot) {
                     $hasToken = $bot->hasTokenForEnvironment($env) ? '✅' : '❌';
                     $hasDomain = $bot->hasDomainForEnvironment($env) ? '✅' : '❌';
+                    $hasWebhook = $bot->webhook_url ? '✅' : '❌';
                     $table[] = [
                         $bot->name,
                         $hasToken,
                         $hasDomain,
+                        $hasWebhook,
                         $bot->getMaskedTokenForEnvironment($env) ?: 'Нет токена',
-                        $bot->getDomainForEnvironment($env) ?: 'Нет домена'
+                        $bot->getDomainForEnvironment($env) ?: 'Нет домена',
+                        $bot->webhook_url ?: 'Нет webhook URL'
                     ];
                 }
-                $this->table(['Имя', 'Токен', 'Домен', 'Токен', 'Домен'], $table);
+                $this->table(['Имя', 'Токен', 'Домен', 'Webhook', 'Токен', 'Домен', 'Webhook URL'], $table);
             }
             
             $this->newLine();
         }
+    }
+    
+    /**
+     * Проверка конфликтов webhook URL между ботами
+     */
+    private function checkWebhookConflicts(\Illuminate\Database\Eloquent\Collection $bots): void
+    {
+        $this->info("🔍 Проверка конфликтов webhook URL...");
+        
+        $webhookMap = [];
+        $conflicts = [];
+        
+        foreach ($bots as $bot) {
+            if (!$bot->webhook_url) {
+                continue;
+            }
+            
+            $webhookUrl = $bot->webhook_url;
+            
+            if (!isset($webhookMap[$webhookUrl])) {
+                $webhookMap[$webhookUrl] = [];
+            }
+            
+            $webhookMap[$webhookUrl][] = $bot;
+        }
+        
+        // Проверяем конфликты
+        foreach ($webhookMap as $webhookUrl => $botsWithSameWebhook) {
+            if (count($botsWithSameWebhook) > 1) {
+                $conflicts[] = [
+                    'webhook_url' => $webhookUrl,
+                    'bots' => $botsWithSameWebhook
+                ];
+            }
+        }
+        
+        if (empty($conflicts)) {
+            $this->info("✅ Конфликтов webhook URL не найдено");
+        } else {
+            $this->warn("⚠️  Найдены конфликты webhook URL:");
+            
+            foreach ($conflicts as $conflict) {
+                $this->line("   Webhook: {$conflict['webhook_url']}");
+                $this->line("   Боты:");
+                
+                foreach ($conflict['bots'] as $bot) {
+                    $devDomain = $bot->dev_domain ?: 'Нет';
+                    $prodDomain = $bot->prod_domain ?: 'Нет';
+                    $this->line("     - {$bot->name} (dev: {$devDomain}, prod: {$prodDomain})");
+                }
+                $this->newLine();
+            }
+            
+            $this->warn("💡 Рекомендация: Убедитесь, что боты с одинаковыми webhook URL имеют разные домены для dev и prod окружений");
+        }
+        
+        $this->newLine();
     }
     
     /**

@@ -285,4 +285,109 @@ class Bot extends Model
             ->withDomainForEnvironment($environment)
             ->get();
     }
+    
+    /**
+     * Проверить, что webhook URL изолирован для указанного окружения
+     */
+    public function isWebhookIsolatedForEnvironment(string $environment): bool
+    {
+        if (!$this->webhook_url) {
+            return false;
+        }
+        
+        $domain = $this->getDomainForEnvironment($environment);
+        if (!$domain) {
+            return false;
+        }
+        
+        // Проверяем, что webhook URL уникален для этого окружения
+        $fullWebhookUrl = $this->getFullWebhookUrlForEnvironment($environment);
+        
+        // Ищем другие боты с таким же webhook URL
+        $conflictingBots = self::enabled()
+            ->where('id', '!=', $this->id)
+            ->where('webhook_url', $this->webhook_url)
+            ->get();
+        
+        foreach ($conflictingBots as $otherBot) {
+            // Если домены одинаковые - проверяем изоляцию по токенам
+            if ($this->dev_domain === $otherBot->dev_domain && 
+                $this->prod_domain === $otherBot->prod_domain) {
+                
+                // Если у ботов разные токены для разных окружений - это нормально
+                if ($this->hasTokenForEnvironment($environment) && 
+                    $otherBot->hasTokenForEnvironment($environment === 'dev' ? 'prod' : 'dev')) {
+                    continue; // Боты изолированы по токенам
+                }
+                
+                // Если у обоих ботов есть токены для одного окружения - это конфликт
+                if ($this->hasTokenForEnvironment($environment) && 
+                    $otherBot->hasTokenForEnvironment($environment)) {
+                    return false; // Конфликт токенов
+                }
+            }
+            
+            // Если домены разные - проверяем по доменам
+            if ($otherBot->getDomainForEnvironment($environment) === $domain) {
+                return false;
+            }
+            
+            // Дополнительная проверка: если у другого бота есть токен для другого окружения
+            // и домены разные, то это нормально (изоляция по доменам)
+            $otherEnvironment = $environment === 'dev' ? 'prod' : 'dev';
+            if ($otherBot->hasTokenForEnvironment($otherEnvironment) && 
+                $otherBot->hasDomainForEnvironment($otherEnvironment)) {
+                
+                $otherDomain = $otherBot->getDomainForEnvironment($otherEnvironment);
+                if ($otherDomain && $otherDomain !== $domain) {
+                    // Боты изолированы по доменам - это нормально
+                    continue;
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Получить список конфликтующих ботов для webhook URL
+     */
+    public function getConflictingBots(): \Illuminate\Database\Eloquent\Collection
+    {
+        if (!$this->webhook_url) {
+            return collect();
+        }
+        
+        return self::enabled()
+            ->where('id', '!=', $this->id)
+            ->where('webhook_url', $this->webhook_url)
+            ->get();
+    }
+    
+    /**
+     * Проверить, что бот полностью изолирован (токен + домен + webhook)
+     */
+    public function isFullyIsolatedForEnvironment(string $environment): bool
+    {
+        return $this->isIsolatedForEnvironment($environment) && 
+               $this->isWebhookIsolatedForEnvironment($environment);
+    }
+    
+    /**
+     * Получить детальную информацию об изоляции для окружения
+     */
+    public function getIsolationDetailsForEnvironment(string $environment): array
+    {
+        return [
+            'has_token' => $this->hasTokenForEnvironment($environment),
+            'has_domain' => $this->hasDomainForEnvironment($environment),
+            'has_webhook' => !empty($this->webhook_url),
+            'webhook_isolated' => $this->isWebhookIsolatedForEnvironment($environment),
+            'fully_isolated' => $this->isFullyIsolatedForEnvironment($environment),
+            'token' => $this->getMaskedTokenForEnvironment($environment),
+            'domain' => $this->getDomainForEnvironment($environment),
+            'webhook_url' => $this->getFullWebhookUrlForEnvironment($environment),
+            'conflicting_bots' => $this->getConflictingBots()->pluck('name')->toArray()
+        ];
+    }
 } 

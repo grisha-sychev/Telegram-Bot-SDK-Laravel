@@ -14,72 +14,23 @@ use App\Models\Bot;
  * URL: /webhook/{botName}
  * Боты загружаются из базы данных
  * Автоматически использует домен текущего окружения (APP_ENV)
+ * Использует middleware для проверки изоляции ботов
  */
 Route::post('/webhook/{botName}', function ($botName) {
     try {
-        // Ищем бота в базе данных
-        $botModel = Bot::byName($botName)->where('enabled', true)->first();
+        // Получаем данные из middleware
+        $botModel = request()->attributes->get('bot_model');
+        $botEnvironment = request()->attributes->get('bot_environment');
         
-        if (!$botModel) {
-            \Log::warning("Bot: Bot not found or disabled: {$botName}");
-            return response()->json(['error' => 'Bot not found or disabled'], 404);
+        if (!$botModel || !$botEnvironment) {
+            \Log::error("Bot: Missing bot data from middleware for bot: {$botName}");
+            return response()->json(['error' => 'Bot isolation check failed'], 500);
         }
 
-        // Проверяем, что у бота есть webhook URL и домен для текущего окружения
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        $fullWebhookUrl = $botModel->getFullWebhookUrl();
-        
-        if (!$fullWebhookUrl) {
-            \Log::error("Bot: No webhook URL or domain for environment '{$currentEnvironment}' for bot: {$botName}");
-            return response()->json(['error' => 'Webhook not configured for current environment'], 500);
-        }
-
-        // Определяем окружение для этого бота на основе домена запроса
-        $requestDomain = request()->getHost();
-        $botEnvironment = null;
-        
-        // Проверяем, соответствует ли домен запроса dev или prod домену бота
-        $devDomain = $botModel->dev_domain;
-        $prodDomain = $botModel->prod_domain;
-        
-        if ($devDomain) {
-            $devHost = parse_url($devDomain, PHP_URL_HOST);
-            if ($devHost && $requestDomain === $devHost) {
-                $botEnvironment = 'dev';
-            }
-        }
-        
-        if ($prodDomain) {
-            $prodHost = parse_url($prodDomain, PHP_URL_HOST);
-            if ($prodHost && $requestDomain === $prodHost) {
-                $botEnvironment = 'prod';
-            }
-        }
-        
-        // Если окружение не определено, блокируем доступ
-        if (!$botEnvironment) {
-            \Log::error("Bot: Domain mismatch for bot: {$botName}", [
-                'request_domain' => $requestDomain,
-                'dev_domain' => $devDomain,
-                'prod_domain' => $prodDomain
-            ]);
-            return response()->json(['error' => 'Domain not configured for this environment'], 403);
-        }
-        
-        // Проверяем, что у бота есть токен для определенного окружения
-        if (!$botModel->hasTokenForEnvironment($botEnvironment)) {
-            \Log::error("Bot: No token for environment '{$botEnvironment}' for bot: {$botName}");
-            return response()->json(['error' => 'Bot not configured for this environment'], 403);
-        }
-        
-        // Устанавливаем окружение для бота
-        Bot::setCurrentEnvironment($botEnvironment);
-        
         // Логируем информацию о webhook
         \Log::info("Bot: Processing webhook for bot: {$botName}", [
-            'request_environment' => $currentEnvironment,
             'bot_environment' => $botEnvironment,
-            'webhook_url' => $fullWebhookUrl,
+            'webhook_url' => $botModel->getFullWebhookUrlForEnvironment($botEnvironment),
             'domain' => $botModel->getDomainForEnvironment($botEnvironment),
             'request_domain' => request()->getHost()
         ]);
@@ -131,4 +82,4 @@ Route::post('/webhook/{botName}', function ($botName) {
         
         return response()->json(['error' => 'Internal server error'], 500);
     }
-})->name('bot.webhook.modern'); 
+})->middleware('bot.isolation')->name('bot.webhook.modern'); 
