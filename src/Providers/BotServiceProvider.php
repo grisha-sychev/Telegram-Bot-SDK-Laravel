@@ -28,6 +28,7 @@ class BotServiceProvider extends ServiceProvider
         // StatsCommand::class,
         // WebhookCommand::class,
         // MigrateCommand::class,
+        \Bot\Console\Commands\PublishCommand::class,
     ];
 
     /**
@@ -40,11 +41,6 @@ class BotServiceProvider extends ServiceProvider
             __DIR__ . '/../../config/bot.php',
             'bot'
         );
-
-        // Регистрируем команды только для консоли
-        if ($this->app->runningInConsole() && !empty($this->commands)) {
-            $this->commands($this->commands);
-        }
     }
 
     /**
@@ -52,6 +48,11 @@ class BotServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Регистрируем команды только для консоли
+        if ($this->app->runningInConsole() && !empty($this->commands)) {
+            $this->commands($this->commands);
+        }
+        
         $this->bootPublishing();
         $this->bootRoutes();
     }
@@ -97,11 +98,6 @@ class BotServiceProvider extends ServiceProvider
             ];
 
             $this->publishes($pathsToPublish, 'bot');
-            
-            // Регистрируем команду публикации
-            $this->commands([
-                \App\Console\Commands\PublishCommand::class,
-            ]);
         }
     }
 

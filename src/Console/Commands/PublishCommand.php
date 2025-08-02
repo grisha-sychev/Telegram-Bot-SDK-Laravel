@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Bot\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -105,41 +105,44 @@ class PublishCommand extends Command
     {
         $paths = [];
         
+        // Базовый путь к пакету
+        $packagePath = __DIR__ . '/../../..';
+        
         switch ($tag) {
             case 'bot-config':
             case 'config':
-                $paths[__DIR__ . '/../../../config/bot.php'] = config_path('bot.php');
+                $paths[$packagePath . '/config/bot.php'] = config_path('bot.php');
                 break;
                 
             case 'bot-app':
             case 'app':
-                $paths[__DIR__ . '/../../../app'] = app_path();
+                $paths[$packagePath . '/app'] = app_path();
                 break;
                 
             case 'bot-routes':
             case 'routes':
-                $paths[__DIR__ . '/../../../routes'] = base_path('routes');
+                $paths[$packagePath . '/routes'] = base_path('routes');
                 break;
                 
             case 'bot-database':
             case 'database':
             case 'migrations':
-                $paths[__DIR__ . '/../../../database'] = database_path();
+                $paths[$packagePath . '/database'] = database_path();
                 break;
                 
             case 'bot-lang':
             case 'lang':
-                $paths[__DIR__ . '/../../../resources/lang'] = base_path('resources/lang');
+                $paths[$packagePath . '/resources/lang'] = base_path('resources/lang');
                 break;
                 
             case 'bot':
             default:
                 $paths = [
-                    __DIR__ . '/../../../app' => app_path(),
-                    __DIR__ . '/../../../config' => config_path(),
-                    __DIR__ . '/../../../database' => database_path(),
-                    __DIR__ . '/../../../routes' => base_path('routes'),
-                    __DIR__ . '/../../../resources' => base_path('resources'),
+                    $packagePath . '/app' => app_path(),
+                    $packagePath . '/config' => config_path(),
+                    $packagePath . '/database' => database_path(),
+                    $packagePath . '/routes' => base_path('routes'),
+                    $packagePath . '/resources' => base_path('resources'),
                 ];
                 break;
         }
