@@ -38,9 +38,8 @@ class Services
                 return null;
             }
             
-            // Получаем токен для текущего окружения
-            $currentEnvironment = \App\Models\Bot::getCurrentEnvironment();
-            return $botModel->getTokenForEnvironment($currentEnvironment);
+            // Получаем токен бота
+            return $botModel->token;
         } catch (\Exception $e) {
             return null;
         }

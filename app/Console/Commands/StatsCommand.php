@@ -59,11 +59,8 @@ class StatsCommand extends Command
 
     private function gatherBotStatistics(Bot $bot, string $period, bool $detailed): array
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        
         return [
             'bot_info' => $this->getBotInfo($bot),
-            'environment' => $currentEnvironment,
             'system' => $this->getSystemStats(),
             'performance' => $this->getPerformanceStats($period),
             'errors' => $this->getErrorStats($period),
@@ -73,7 +70,6 @@ class StatsCommand extends Command
 
     private function gatherAllBotsStatistics($bots, string $period, bool $detailed): array
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
         $botStats = [];
         
         foreach ($bots as $bot) {
@@ -81,18 +77,17 @@ class StatsCommand extends Command
                 'name' => $bot->name,
                 'username' => $bot->username,
                 'enabled' => $bot->enabled,
-                'has_token' => $bot->hasTokenForEnvironment($currentEnvironment),
-                'webhook_configured' => !empty($bot->webhook_url),
+                'has_token' => $bot->hasToken(),
+                'webhook_configured' => $bot->hasWebhookUrl(),
                 'class_exists' => $bot->botClassExists(),
             ];
         }
 
         return [
-            'environment' => $currentEnvironment,
             'total_bots' => $bots->count(),
             'enabled_bots' => $bots->where('enabled', true)->count(),
-            'bots_with_token' => $bots->filter(function($bot) use ($currentEnvironment) {
-                return $bot->hasTokenForEnvironment($currentEnvironment);
+            'bots_with_token' => $bots->filter(function($bot) {
+                return $bot->hasToken();
             })->count(),
             'bots' => $botStats,
             'system' => $this->getSystemStats(),
@@ -101,13 +96,11 @@ class StatsCommand extends Command
 
     private function getBotInfo(Bot $bot): array
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        
-        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
-            return ['error' => "Token for environment '{$currentEnvironment}' not configured"];
+        if (!$bot->hasToken()) {
+            return ['error' => "Token not configured"];
         }
 
-        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        $token = $bot->token;
 
         try {
             $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
@@ -165,13 +158,11 @@ class StatsCommand extends Command
 
     private function getWebhookStats(Bot $bot): array
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        
-        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
-            return ['error' => "Token for environment '{$currentEnvironment}' not configured"];
+        if (!$bot->hasToken()) {
+            return ['error' => "Token not configured"];
         }
 
-        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        $token = $bot->token;
 
         try {
             $http = Http::timeout(10);
@@ -254,7 +245,6 @@ class StatsCommand extends Command
         } else {
             $this->line("  📝 Имя: {$stats['bot_info']['first_name']}");
             $this->line("  🆔 Username: @{$stats['bot_info']['username']}");
-            $this->line("  🌍 Окружение: {$stats['environment']}");
         }
 
         $this->newLine();

@@ -167,16 +167,12 @@ class MigrateCommand extends Command
 
     private function collectExportData(): array
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        
         $data = [
             'metadata' => [
                 'export_date' => now()->toISOString(),
                 'version' => '2.0',
-                'environment' => $currentEnvironment,
                 'total_bots' => 0,
-                'bots_with_dev_token' => 0,
-                'bots_with_prod_token' => 0,
+                'bots_with_token' => 0,
             ],
             'configuration' => config('bot', []),
             'bots' => [],
@@ -190,11 +186,8 @@ class MigrateCommand extends Command
         try {
             $bots = Bot::all();
             $data['metadata']['total_bots'] = $bots->count();
-            $data['metadata']['bots_with_dev_token'] = $bots->filter(function($bot) {
-                return $bot->hasTokenForEnvironment('dev');
-            })->count();
-            $data['metadata']['bots_with_prod_token'] = $bots->filter(function($bot) {
-                return $bot->hasTokenForEnvironment('prod');
+            $data['metadata']['bots_with_token'] = $bots->filter(function($bot) {
+                return $bot->hasToken();
             })->count();
 
             foreach ($bots as $bot) {
@@ -205,8 +198,7 @@ class MigrateCommand extends Command
                     'description' => $bot->description,
                     'bot_id' => $bot->bot_id,
                     'enabled' => $bot->enabled,
-                    'dev_token' => $bot->dev_token ? substr($bot->dev_token, 0, 10) . '...' : null,
-                    'prod_token' => $bot->prod_token ? substr($bot->prod_token, 0, 10) . '...' : null,
+                    'token' => $bot->token ? substr($bot->token, 0, 10) . '...' : null,
                     'webhook_url' => $bot->webhook_url,
                     'webhook_secret' => $bot->webhook_secret ? '***' : null,
                     'settings' => $bot->settings,

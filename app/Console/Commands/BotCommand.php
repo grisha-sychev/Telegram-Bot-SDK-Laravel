@@ -58,25 +58,19 @@ class BotCommand extends Command
                 return 0;
             }
 
-            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info('🤖 Список ботов:');
-            $this->line("🌍 Текущее окружение: {$currentEnvironment}");
             $this->newLine();
             
             $this->table(
-                ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Dev Domain', 'Prod Domain', 'Текущий Токен', 'Статус', 'Webhook', 'Создан'],
-                $bots->map(function ($bot) use ($currentEnvironment) {
+                ['ID', 'Имя', 'Username', 'Token', 'Webhook URL', 'Статус', 'Создан'],
+                $bots->map(function ($bot) {
                     return [
                         $bot->id,
                         $bot->name,
                         '@' . $bot->username,
-                        $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
-                        $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
-                        $bot->hasDomainForEnvironment('dev') ? '✅' : '❌',
-                        $bot->hasDomainForEnvironment('prod') ? '✅' : '❌',
-                        $bot->hasTokenForEnvironment($currentEnvironment) ? '✅' : '❌',
+                        $bot->hasToken() ? '✅' : '❌',
+                        $bot->hasWebhookUrl() ? '✅' : '❌',
                         $bot->enabled ? '✅ Активен' : '❌ Отключен',
-                        $bot->webhook_url ? '✅ Настроен' : '❌ Не настроен',
                         $bot->created_at->format('d.m.Y H:i')
                     ];
                 })->toArray()
@@ -111,20 +105,14 @@ class BotCommand extends Command
                 return 1;
             }
 
-            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info("🤖 Информация о боте '{$bot->name}':");
             $this->newLine();
 
             $this->line("  📝 Имя: {$bot->name}");
             $this->line("  🆔 Username: @{$bot->username}");
             $this->line("  🔢 ID: {$bot->bot_id}");
-            $this->line("  🌍 Текущее окружение: {$currentEnvironment}");
-            $this->line("  🗝️  Dev Token: " . ($bot->hasTokenForEnvironment('dev') ? $bot->getMaskedTokenForEnvironment('dev') : '❌ Не установлен'));
-            $this->line("  🗝️  Prod Token: " . ($bot->hasTokenForEnvironment('prod') ? $bot->getMaskedTokenForEnvironment('prod') : '❌ Не установлен'));
-            $this->line("  🗝️  Текущий токен: " . ($bot->hasTokenForEnvironment($currentEnvironment) ? $bot->getMaskedTokenForEnvironment($currentEnvironment) : '❌ Не установлен'));
-            $this->line("  🌐 Dev Domain: " . ($bot->hasDomainForEnvironment('dev') ? $bot->getDomainForEnvironment('dev') : '❌ Не установлен'));
-            $this->line("  🌐 Prod Domain: " . ($bot->hasDomainForEnvironment('prod') ? $bot->getDomainForEnvironment('prod') : '❌ Не установлен'));
-            $this->line("  🌐 Текущий домен: " . ($bot->hasDomainForEnvironment($currentEnvironment) ? $bot->getDomainForEnvironment($currentEnvironment) : '❌ Не установлен'));
+            $this->line("  🗝️  Token: " . ($bot->hasToken() ? $bot->getMaskedTokenAttribute() : '❌ Не установлен'));
+            $this->line("  🌐 Webhook URL: " . ($bot->hasWebhookUrl() ? $bot->webhook_url : '❌ Не установлен'));
             $this->line("  📡 Статус: " . ($bot->enabled ? '✅ Активен' : '❌ Отключен'));
             
             if ($bot->description) {
@@ -280,9 +268,7 @@ class BotCommand extends Command
                 return 1;
             }
 
-            $currentEnvironment = Bot::getCurrentEnvironment();
             $this->info("🧪 Тестирование бота '{$bot->name}'...");
-            $this->line("🌍 Текущее окружение: {$currentEnvironment}");
 
             // Проверяем SSL настройки
             $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
@@ -292,16 +278,16 @@ class BotCommand extends Command
 
             $this->newLine();
 
-            // Проверяем наличие токена для текущего окружения
-            if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
-                $this->error("❌ Токен для окружения '{$currentEnvironment}' не установлен");
+            // Проверяем наличие токена
+            if (!$bot->hasToken()) {
+                $this->error("❌ Токен бота не установлен");
                 return 1;
             }
 
             // Тест API подключения
             $this->line('1. Проверка API подключения...');
             try {
-                $token = $bot->getTokenForEnvironment($currentEnvironment);
+                $token = $bot->token;
                 
                 $http = Http::timeout(10);
                 if ($noSsl) {
@@ -342,7 +328,7 @@ class BotCommand extends Command
             $this->line('3. Проверка webhook...');
             if ($bot->webhook_url) {
                 try {
-                    $token = $bot->getTokenForEnvironment($currentEnvironment);
+                    $token = $bot->token;
                     
                     $http = Http::timeout(10);
                     if ($noSsl) {

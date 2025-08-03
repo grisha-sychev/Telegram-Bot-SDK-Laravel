@@ -47,26 +47,13 @@ class WebhookCommand extends Command
         }
 
         // Определяем окружение (приоритет: опция --environment, затем APP_ENV)
-        $environment = $this->option('environment');
-        if ($environment && !in_array($environment, ['dev', 'prod'])) {
-            $this->error('❌ Окружение должно быть dev или prod');
-            return 1;
-        }
-        
-        $currentEnvironment = $environment ?: Bot::getCurrentEnvironment();
-        
-        // Проверяем наличие токена для указанного окружения
-        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
-            $this->error("❌ Токен для окружения '{$currentEnvironment}' не установлен у бота '{$bot->name}'");
+        // Проверяем наличие токена
+        if (!$bot->hasToken()) {
+            $this->error("❌ Токен не установлен у бота '{$bot->name}'");
             return 1;
         }
 
-        $token = $bot->getTokenForEnvironment($currentEnvironment);
-        
-        // Показываем информацию об используемом окружении
-        if ($environment) {
-            $this->info("🌍 Используется окружение: {$currentEnvironment}");
-        }
+        $token = $bot->token;
 
         switch ($action) {
             case 'set':
@@ -78,11 +65,11 @@ class WebhookCommand extends Command
             case 'test':
                 return $this->testWebhook($bot, $token);
             case 'auto':
-                return $this->autoWebhook($bot, $token, $currentEnvironment);
+                return $this->autoWebhook($bot, $token);
             case 'restart':
-                return $this->restartWebhook($bot, $token, $currentEnvironment);
+                return $this->restartWebhook($bot, $token);
             case 'check':
-                return $this->checkWebhook($bot, $token, $currentEnvironment);
+                return $this->checkWebhook($bot, $token);
             default:
                 $this->error("Неизвестное действие: {$action}");
                 $this->line('Доступные действия: set, info, delete, test, auto, restart, check');
@@ -93,15 +80,11 @@ class WebhookCommand extends Command
     private function setWebhook(Bot $bot, string $token): int
     {
         $url = $this->argument('url');
-        $currentEnvironment = Bot::getCurrentEnvironment();
         
         if (!$url) {
-            // Используем домен из базы данных для текущего окружения
-            $domain = $bot->getDomainForEnvironment($currentEnvironment);
-            
-            if ($domain) {
-                $defaultUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
-                $url = $this->ask('Введите URL webhook', $defaultUrl);
+            // Используем webhook URL из базы данных
+            if ($bot->webhook_url) {
+                $url = $this->ask('Введите URL webhook', $bot->webhook_url);
             } else {
                 $url = $this->ask('Введите URL webhook');
             }
@@ -167,7 +150,6 @@ class WebhookCommand extends Command
 
         $this->info("🔧 Настройка webhook для бота '{$bot->name}'...");
         $this->line("🌐 URL: {$url}");
-        $this->line("🌍 Окружение: {$currentEnvironment}");
 
         // Проверяем SSL настройки
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
@@ -361,20 +343,18 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function autoWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    private function autoWebhook(Bot $bot, string $token): int
     {
         $this->info("🔄 Автоматическое обновление webhook для бота '{$bot->name}'...");
-        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
 
-        // Получаем домен для текущего окружения
-        $domain = $bot->getDomainForEnvironment($currentEnvironment);
-        if (!$domain) {
-            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+        // Проверяем наличие webhook URL
+        if (!$bot->hasWebhookUrl()) {
+            $this->error("❌ Webhook URL не установлен для бота '{$bot->name}'");
             return 1;
         }
 
-        // Формируем webhook URL
-        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        // Используем webhook URL из базы данных
+        $webhookUrl = $bot->webhook_url;
         $secret = $bot->webhook_secret;
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
@@ -454,7 +434,7 @@ class WebhookCommand extends Command
                 $this->info('✅ Webhook обновлен успешно!');
                 $this->line("🌐 Полный URL: {$webhookUrl}");
                 $this->line("📝 Относительный URL в БД: {$relativeUrl}");
-                $this->line("🌍 Окружение: {$currentEnvironment}");
+
                 if ($secret) {
                     $this->line("🔐 Secret: {$secret}");
                 }
@@ -472,20 +452,18 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function restartWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    private function restartWebhook(Bot $bot, string $token): int
     {
         $this->info("🔄 Перезапуск webhook для бота '{$bot->name}'...");
-        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
 
-        // Получаем домен для текущего окружения
-        $domain = $bot->getDomainForEnvironment($currentEnvironment);
-        if (!$domain) {
-            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+        // Проверяем наличие webhook URL
+        if (!$bot->hasWebhookUrl()) {
+            $this->error("❌ Webhook URL не установлен для бота '{$bot->name}'");
             return 1;
         }
 
-        // Формируем webhook URL
-        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        // Используем webhook URL из базы данных
+        $webhookUrl = $bot->webhook_url;
         $secret = $bot->webhook_secret;
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
@@ -565,7 +543,7 @@ class WebhookCommand extends Command
                 $this->info('✅ Webhook перезапущен успешно!');
                 $this->line("🌐 Полный URL: {$webhookUrl}");
                 $this->line("📝 Относительный URL в БД: {$relativeUrl}");
-                $this->line("🌍 Окружение: {$currentEnvironment}");
+
                 if ($secret) {
                     $this->line("🔐 Secret: {$secret}");
                 }
@@ -583,20 +561,18 @@ class WebhookCommand extends Command
         return 0;
     }
 
-    private function checkWebhook(Bot $bot, string $token, string $currentEnvironment): int
+    private function checkWebhook(Bot $bot, string $token): int
     {
         $this->info("🔍 Проверка соответствия webhook для бота '{$bot->name}'...");
-        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
 
-        // Получаем домен для текущего окружения
-        $domain = $bot->getDomainForEnvironment($currentEnvironment);
-        if (!$domain) {
-            $this->error("❌ Домен для окружения '{$currentEnvironment}' не установлен");
+        // Проверяем наличие webhook URL
+        if (!$bot->hasWebhookUrl()) {
+            $this->error("❌ Webhook URL не установлен для бота '{$bot->name}'");
             return 1;
         }
 
-        // Формируем webhook URL
-        $webhookUrl = rtrim($domain, '/') . "/webhook/{$bot->name}";
+        // Используем webhook URL из базы данных
+        $webhookUrl = $bot->webhook_url;
         $secret = $bot->webhook_secret;
 
         $this->info("🌐 Webhook URL: {$webhookUrl}");
@@ -625,7 +601,7 @@ class WebhookCommand extends Command
                 $info = $response->json()['result'];
                 $this->displayWebhookInfo($info);
 
-                $this->line("🌍 Текущее окружение: {$currentEnvironment}");
+
                 $this->line("🌐 Webhook URL: {$webhookUrl}");
 
                 if ($info['url'] === $webhookUrl) {

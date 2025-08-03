@@ -153,18 +153,16 @@ class HealthCommand extends Command
 
     private function checkBot(Bot $bot, bool $noSsl = false, bool $verboseErrors = false): void
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
         $statusIcon = $bot->enabled ? '🟢' : '🔴';
         $status = $bot->enabled ? 'активен' : 'отключен';
         
         $this->line("{$statusIcon} Бот: {$bot->name} (@{$bot->username}) - {$status}");
         $this->line("  📝 Имя: {$bot->first_name}");
         $this->line("  🆔 ID: {$bot->bot_id}");
-        $this->line("  🌍 Окружение: {$currentEnvironment}");
         
-        // Проверяем наличие токена для текущего окружения
-        if (!$bot->hasTokenForEnvironment($currentEnvironment)) {
-            $this->error("  ❌ Токен для окружения '{$currentEnvironment}' не установлен");
+        // Проверяем наличие токена
+        if (!$bot->hasToken()) {
+            $this->error("  ❌ Токен не установлен");
             return;
         }
         
@@ -174,7 +172,7 @@ class HealthCommand extends Command
         }
 
         // Проверяем API связность  
-        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        $token = $bot->token;
         $apiStatus = $this->checkTelegramAPI($token, $noSsl);
         if ($apiStatus['status'] === 'ok') {
             $this->line("  ✅ API: Соединение OK");
@@ -237,8 +235,7 @@ class HealthCommand extends Command
 
     private function checkBotWebhook(Bot $bot, bool $noSsl = false): void
     {
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        $token = $bot->getTokenForEnvironment($currentEnvironment);
+        $token = $bot->token;
         
         try {
             $http = Http::timeout(10);

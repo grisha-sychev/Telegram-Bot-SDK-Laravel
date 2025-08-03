@@ -31,16 +31,15 @@ class SetupCommand extends Command
         $apiHost = $this->option('api-host') ?: 'https://api.telegram.org';
         $noSsl = $botData['no_ssl'] ?? $this->option('no-ssl') ?? false;
         
-        // Проверяем токен для текущего окружения
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        $currentToken = $botData['dev_token'] ?? $botData['prod_token'];
+        // Проверяем токен
+        $token = $botData['token'];
         
-        if (!$currentToken) {
-            $this->error("❌ Токен для текущего окружения ({$currentEnvironment}) обязателен");
+        if (!$token) {
+            $this->error("❌ Токен бота обязателен");
             return 1;
         }
 
-        $botInfo = $this->getBotInfo($currentToken, $apiHost, $noSsl);
+        $botInfo = $this->getBotInfo($token, $apiHost, $noSsl);
         if (!$botInfo) {
             return 1;
         }
@@ -64,12 +63,12 @@ class SetupCommand extends Command
         // Создаем класс бота если не существует
         $this->createBotClass($botData['name']);
 
-        // Настраиваем webhook (автоматически использует домен текущего окружения)
+        // Настраиваем webhook
         $webhookUrl = $botData['webhook_url'] ?: $this->option('webhook');
         if ($webhookUrl) {
             $this->setupWebhook($bot, $apiHost, $webhookUrl, $noSsl);
         } else {
-            $this->warn('⏭️  Webhook не настроен (домен для текущего окружения не указан)');
+            $this->warn('⏭️  Webhook не настроен (webhook_url не указан)');
         }
 
         // Проверяем и создаем конфигурацию
@@ -81,7 +80,6 @@ class SetupCommand extends Command
         $this->newLine();
         $this->info('✅ Настройка бота завершена!');
         $this->line("🤖 Бот '{$bot->name}' успешно добавлен");
-        $this->line("🌍 Текущее окружение: {$currentEnvironment}");
         $this->line('📖 Документация: vendor/bot/bot/docs/');
         $this->line('🔍 Проверка: php artisan bot:health');
 
@@ -95,16 +93,14 @@ class SetupCommand extends Command
             if ($bots->isNotEmpty()) {
                 $this->info('📋 Существующие боты:');
                 $this->table(
-                    ['ID', 'Имя', 'Username', 'Dev Token', 'Prod Token', 'Dev Domain', 'Prod Domain', 'Статус', 'Создан'],
+                    ['ID', 'Имя', 'Username', 'Token', 'Webhook URL', 'Статус', 'Создан'],
                     $bots->map(function ($bot) {
                         return [
                             $bot->id,
                             $bot->name,
                             '@' . $bot->username,
-                            $bot->hasTokenForEnvironment('dev') ? '✅' : '❌',
-                            $bot->hasTokenForEnvironment('prod') ? '✅' : '❌',
-                            $bot->hasDomainForEnvironment('dev') ? '✅' : '❌',
-                            $bot->hasDomainForEnvironment('prod') ? '✅' : '❌',
+                            $bot->hasToken() ? '✅' : '❌',
+                            $bot->hasWebhookUrl() ? '✅' : '❌',
                             $bot->enabled ? '✅ Активен' : '❌ Отключен',
                             $bot->created_at->format('d.m.Y H:i')
                         ];
@@ -146,60 +142,37 @@ class SetupCommand extends Command
             // Игнорируем ошибку если таблица не существует
         }
 
-        // Запрашиваем токен для разработки
-        $this->info('🔧 Токен для разработки (dev):');
-        $devToken = $this->ask('Введите токен бота для разработки (полученный от @BotFather)');
-        if ($devToken && !preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $devToken)) {
-            $this->error('❌ Неверный формат токена для разработки');
+        // Запрашиваем токен
+        $this->info('🔧 Токен бота:');
+        $token = $this->ask('Введите токен бота (полученный от @BotFather)');
+        if (!$token) {
+            $this->error('❌ Токен бота обязателен');
+            return null;
+        }
+        
+        if (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
+            $this->error('❌ Неверный формат токена');
             $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
             return null;
         }
 
-        // Запрашиваем токен для продакшена
-        $this->info('🚀 Токен для продакшена (prod):');
-        $prodToken = $this->ask('Введите токен бота для продакшена (полученный от @BotFather)');
-        if ($prodToken && !preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $prodToken)) {
-            $this->error('❌ Неверный формат токена для продакшена');
-            $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
-            return null;
-        }
-
-        // Запрашиваем домен для разработки
-        $this->info('🔧 Домен для разработки (dev):');
-        $devDomain = $this->ask('Введите домен для разработки (например: https://dev.example.com)');
-        if ($devDomain && !filter_var($devDomain, FILTER_VALIDATE_URL)) {
-            $this->error('❌ Неверный формат домена для разработки');
-            $this->line('Домен должен быть валидным URL (например: https://dev.example.com)');
-            return null;
-        }
-
-        // Запрашиваем домен для продакшена
-        $this->info('🚀 Домен для продакшена (prod):');
-        $prodDomain = $this->ask('Введите домен для продакшена (например: https://example.com)');
-        if ($prodDomain && !filter_var($prodDomain, FILTER_VALIDATE_URL)) {
-            $this->error('❌ Неверный формат домена для продакшена');
-            $this->line('Домен должен быть валидным URL (например: https://example.com)');
-            return null;
-        }
-
-        // Проверяем, что хотя бы один токен указан
-        if (!$devToken && !$prodToken) {
-            $this->error('❌ Необходимо указать хотя бы один токен (dev или prod)');
-            return null;
-        }
-
-        // Проверяем уникальность токенов
+        // Проверяем уникальность токена
         try {
-            if ($devToken && Bot::byToken($devToken)->exists()) {
-                $this->error('❌ Бот с таким dev токеном уже существует');
-                return null;
-            }
-            if ($prodToken && Bot::byToken($prodToken)->exists()) {
-                $this->error('❌ Бот с таким prod токеном уже существует');
+            if (Bot::byToken($token)->exists()) {
+                $this->error('❌ Бот с таким токеном уже существует');
                 return null;
             }
         } catch (\Exception $e) {
             // Игнорируем ошибку если таблица не существует
+        }
+
+        // Запрашиваем webhook URL
+        $this->info('🌐 Webhook URL:');
+        $webhookUrl = $this->ask('Введите полный webhook URL (например: https://example.com/webhook/botname)');
+        if ($webhookUrl && !filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
+            $this->error('❌ Неверный формат webhook URL');
+            $this->line('URL должен быть валидным (например: https://example.com/webhook/botname)');
+            return null;
         }
 
         // Запрашиваем администраторов (опционально)
@@ -213,19 +186,9 @@ class SetupCommand extends Command
         // Запрашиваем отключение SSL проверки (опционально)
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
 
-        // Автоматически определяем относительный путь для webhook
-        $webhookUrl = $this->option('webhook');
-        if (!$webhookUrl) {
-            $webhookUrl = "/webhook/{$name}";
-            $this->info("🌐 Webhook URL будет: {$webhookUrl}");
-        }
-
         return [
             'name' => $name,
-            'dev_token' => $devToken,
-            'prod_token' => $prodToken,
-            'dev_domain' => $devDomain,
-            'prod_domain' => $prodDomain,
+            'token' => $token,
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
             'webhook_url' => $webhookUrl,
@@ -379,60 +342,40 @@ class {$className} extends AbstractBot
             return;
         }
 
-        // Получаем текущее окружение
-        $currentEnvironment = Bot::getCurrentEnvironment();
-        
-        // Используем правильный webhook URL с учетом окружения
-        $environmentWebhookUrl = $bot->getWebhookUrlForEnvironment($currentEnvironment);
-        
-        // Определяем полный webhook URL
-        $fullWebhookUrl = '';
-        if (filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
-            $fullWebhookUrl = $webhookUrl;
-        } else {
-            $domain = $bot->getDomainForEnvironment($currentEnvironment);
-            if (!$domain) {
-                $this->error("❌ Домен для окружения '{$currentEnvironment}' не настроен");
-                return;
-            }
-            $fullWebhookUrl = rtrim($domain, '/') . $environmentWebhookUrl;
-        }
-
         // Проверяем URL
-        if (!filter_var($fullWebhookUrl, FILTER_VALIDATE_URL)) {
+        if (!filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
             $this->error('❌ Неверный формат URL');
             return;
         }
 
         // Проверяем HTTPS (кроме локальных адресов или если указан --force)
-        $isLocal = str_contains($fullWebhookUrl, 'localhost') ||
-            str_contains($fullWebhookUrl, '127.0.0.1') ||
-            str_contains($fullWebhookUrl, '192.168.') ||
-            str_contains($fullWebhookUrl, '.local');
+        $isLocal = str_contains($webhookUrl, 'localhost') ||
+            str_contains($webhookUrl, '127.0.0.1') ||
+            str_contains($webhookUrl, '192.168.') ||
+            str_contains($webhookUrl, '.local');
 
-        if (!str_starts_with($fullWebhookUrl, 'https://') && !$isLocal && !$this->option('force')) {
+        if (!str_starts_with($webhookUrl, 'https://') && !$isLocal && !$this->option('force')) {
             $this->error('❌ URL должен быть HTTPS (используйте --force для обхода)');
             return;
         }
 
-        if (!str_starts_with($fullWebhookUrl, 'https://') && ($isLocal || $this->option('force'))) {
+        if (!str_starts_with($webhookUrl, 'https://') && ($isLocal || $this->option('force'))) {
             $this->warn('⚠️  Используется HTTP соединение (только для разработки!)');
         }
 
         // Генерируем secret если не установлен
         $secret = $bot->webhook_secret ?? Str::random(32);
 
-        // Устанавливаем webhook используя токен текущего окружения
+        // Устанавливаем webhook
         $this->info('🔧 Настройка webhook...');
         $this->line("  🌐 API хост: {$apiHost}");
-        $this->line("  🔧 Окружение: {$currentEnvironment}");
         if ($noSsl) {
             $this->warn('  ⚠️  SSL проверка отключена');
         }
 
         try {
             $payload = [
-                'url' => $fullWebhookUrl,
+                'url' => $webhookUrl,
                 'max_connections' => 40,
                 'allowed_updates' => [
                     'message',
@@ -446,7 +389,7 @@ class {$className} extends AbstractBot
                 $payload['secret_token'] = $secret;
             }
 
-            $token = $bot->getTokenAttribute();
+            $token = $bot->token;
             $url = rtrim($apiHost, '/') . "/bot{$token}/setWebhook";
 
             $http = Http::timeout(30);
@@ -465,14 +408,13 @@ class {$className} extends AbstractBot
             if ($response->successful()) {
                 // Сохраняем webhook данные в БД
                 $bot->update([
-                    'webhook_url' => $environmentWebhookUrl, // Сохраняем относительный путь
+                    'webhook_url' => $webhookUrl,
                     'webhook_secret' => $secret,
                 ]);
 
                 $this->info('✅ Webhook настроен успешно');
-                $this->line("  🌐 URL: {$fullWebhookUrl}");
+                $this->line("  🌐 URL: {$webhookUrl}");
                 $this->line("  🔐 Secret: {$secret}");
-                $this->line("  🔧 Окружение: {$currentEnvironment}");
             } else {
                 $result = $response->json();
                 $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));

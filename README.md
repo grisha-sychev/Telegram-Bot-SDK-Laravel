@@ -137,21 +137,13 @@ php artisan bot:publish --tag=bot-routes --force
 
 ## Разделение окружений
 
-Фреймворк поддерживает разделение токенов и доменов по окружениям:
+Фреймворк использует единую структуру для токенов и webhook URL:
 
 ### Токены
-- `dev_token` - токен для разработки
-- `prod_token` - токен для продакшена
+- `token` - токен бота
 
-### Домены
-- `dev_domain` - домен для разработки (например: https://dev.example.com)
-- `prod_domain` - домен для продакшена (например: https://example.com)
-
-### Автоматическое определение окружения
-
-Система автоматически определяет текущее окружение через `APP_ENV`:
-- `APP_ENV=dev` - использует dev_token и dev_domain
-- `APP_ENV=prod` - использует prod_token и prod_domain
+### Webhook URL
+- `webhook_url` - полный URL webhook с доменом (например: https://example.com/webhook/botname)
 
 ### Примеры использования
 
@@ -159,15 +151,21 @@ php artisan bot:publish --tag=bot-routes --force
 // В коде бота
 $bot = Bot::find(1);
 
-// Получение токена для текущего окружения
-$token = $bot->getTokenAttribute();
+// Получение токена
+$token = $bot->token;
 
-// Получение домена для текущего окружения
-$domain = $bot->getDomainAttribute();
+// Получение webhook URL
+$webhookUrl = $bot->webhook_url;
 
-// Получение для конкретного окружения
-$devToken = $bot->getTokenForEnvironment('dev');
-$prodDomain = $bot->getDomainForEnvironment('prod');
+// Проверка наличия токена
+if ($bot->hasToken()) {
+    // Бот имеет токен
+}
+
+// Проверка наличия webhook URL
+if ($bot->hasWebhookUrl()) {
+    // Бот имеет настроенный webhook
+}
 ```
 
 ## Структура проекта

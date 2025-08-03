@@ -13,10 +13,7 @@ class Bot extends Model
 
     protected $fillable = [
         'name',
-        'dev_token',
-        'prod_token',
-        'dev_domain',
-        'prod_domain',
+        'token',
         'username',
         'first_name',
         'description',
@@ -35,117 +32,32 @@ class Bot extends Model
     ];
 
     protected $hidden = [
-        'dev_token',
-        'prod_token',
+        'token',
         'webhook_secret',
     ];
 
     /**
-     * Статическое свойство для хранения текущего окружения
-     */
-    private static ?string $currentEnvironment = null;
-
-    /**
-     * Получить текущее окружение из env или статического свойства
-     */
-    public static function getCurrentEnvironment(): string
-    {
-        if (self::$currentEnvironment !== null) {
-            return self::$currentEnvironment;
-        }
-        return env('APP_ENV', 'dev');
-    }
-
-    /**
-     * Установить текущее окружение
-     */
-    public static function setCurrentEnvironment(string $environment): void
-    {
-        self::$currentEnvironment = $environment;
-    }
-
-    /**
-     * Сбросить текущее окружение к значению из env
-     */
-    public static function resetCurrentEnvironment(): void
-    {
-        self::$currentEnvironment = null;
-    }
-
-    /**
-     * Получить токен для текущего окружения
+     * Получить токен бота
      */
     public function getTokenAttribute(): ?string
     {
-        $environment = self::getCurrentEnvironment();
-        return $this->getTokenForEnvironment($environment);
+        return $this->attributes['token'] ?? null;
     }
 
     /**
-     * Получить токен для указанного окружения
+     * Установить токен бота
      */
-    public function getTokenForEnvironment(string $environment): ?string
+    public function setTokenAttribute(string $token): void
     {
-        return $environment === 'prod' ? $this->prod_token : $this->dev_token;
+        $this->attributes['token'] = $token;
     }
 
     /**
-     * Установить токен для указанного окружения
+     * Проверить наличие токена
      */
-    public function setTokenForEnvironment(string $environment, string $token): void
+    public function hasToken(): bool
     {
-        if ($environment === 'prod') {
-            $this->prod_token = $token;
-        } else {
-            $this->dev_token = $token;
-        }
-    }
-
-    /**
-     * Проверить наличие токена для указанного окружения
-     */
-    public function hasTokenForEnvironment(string $environment): bool
-    {
-        $token = $this->getTokenForEnvironment($environment);
-        return !empty($token);
-    }
-
-    /**
-     * Получить домен для текущего окружения
-     */
-    public function getDomainAttribute(): ?string
-    {
-        $environment = self::getCurrentEnvironment();
-        return $this->getDomainForEnvironment($environment);
-    }
-
-    /**
-     * Получить домен для указанного окружения
-     */
-    public function getDomainForEnvironment(string $environment): ?string
-    {
-        return $environment === 'prod' ? $this->prod_domain : $this->dev_domain;
-    }
-
-    /**
-     * Установить домен для указанного окружения
-     */
-    public function setDomainForEnvironment(string $environment, string $domain): void
-    {
-        if ($environment === 'prod') {
-            $this->prod_domain = $domain;
-        } else {
-            $this->dev_domain = $domain;
-        }
-    }
-
-    /**
-     * Проверить наличие домена для указанного окружения
-     */
-    public function hasDomainForEnvironment(string $environment): bool
-    {
-        $domain = $this->getDomainForEnvironment($environment);
-        return !empty($domain);
+        return !empty($this->token);
     }
 
     /**
@@ -153,16 +65,7 @@ class Bot extends Model
      */
     public function getMaskedTokenAttribute(): string
     {
-        $token = $this->getTokenAttribute();
-        return $token ? substr($token, 0, 10) . '...' : 'Не установлен';
-    }
-
-    /**
-     * Получить маскированный токен для указанного окружения
-     */
-    public function getMaskedTokenForEnvironment(string $environment): string
-    {
-        $token = $this->getTokenForEnvironment($environment);
+        $token = $this->token;
         return $token ? substr($token, 0, 10) . '...' : 'Не установлен';
     }
 
@@ -191,13 +94,11 @@ class Bot extends Model
     }
 
     /**
-     * Поиск бота по токену (для обратной совместимости)
+     * Поиск бота по токену
      */
     public function scopeByToken($query, string $token)
     {
-        return $query->where(function($q) use ($token) {
-            $q->where('dev_token', $token)->orWhere('prod_token', $token);
-        });
+        return $query->where('token', $token);
     }
 
     /**
@@ -209,70 +110,62 @@ class Bot extends Model
     }
 
     /**
-     * Боты с токенами для указанного окружения
+     * Боты с токенами
      */
-    public function scopeWithTokenForEnvironment($query, string $environment)
+    public function scopeWithToken($query)
     {
-        $field = $environment === 'prod' ? 'prod_token' : 'dev_token';
-        return $query->whereNotNull($field)->where($field, '!=', '');
+        return $query->whereNotNull('token')->where('token', '!=', '');
     }
 
     /**
-     * Боты с доменами для указанного окружения
+     * Боты с webhook URL
      */
-    public function scopeWithDomainForEnvironment($query, string $environment)
+    public function scopeWithWebhookUrl($query)
     {
-        $field = $environment === 'prod' ? 'prod_domain' : 'dev_domain';
-        return $query->whereNotNull($field)->where($field, '!=', '');
+        return $query->whereNotNull('webhook_url')->where('webhook_url', '!=', '');
     }
 
     /**
-     * Получить webhook URL для окружения
-     * Для dev окружения добавляется суффикс "dev"
+     * Получить webhook URL
      */
-    public function getWebhookUrlForEnvironment(string $environment): string
+    public function getWebhookUrl(): ?string
     {
-        $baseUrl = $this->webhook_url ?: "/webhook/{$this->name}";
-        
-        if ($environment === 'dev') {
-            return $baseUrl . 'dev';
-        }
-        
-        return $baseUrl;
+        return $this->webhook_url;
     }
 
     /**
-     * Получить полный webhook URL с доменом для окружения
+     * Установить webhook URL
      */
-    public function getFullWebhookUrlForEnvironment(string $environment): ?string
+    public function setWebhookUrl(string $url): void
     {
-        $domain = $this->getDomainForEnvironment($environment);
-        
-        if (!$domain) {
-            return null;
-        }
-        
-        $webhookUrl = $this->getWebhookUrlForEnvironment($environment);
-        return rtrim($domain, '/') . $webhookUrl;
+        $this->webhook_url = $url;
     }
 
     /**
-     * Получить полный webhook URL для текущего окружения
+     * Проверить наличие webhook URL
+     */
+    public function hasWebhookUrl(): bool
+    {
+        return !empty($this->webhook_url);
+    }
+
+    /**
+     * Получить полный webhook URL
      */
     public function getFullWebhookUrl(): ?string
     {
-        $environment = self::getCurrentEnvironment();
-        return $this->getFullWebhookUrlForEnvironment($environment);
+        if (!$this->webhook_url) {
+            return null;
+        }
+        
+        return $this->webhook_url;
     }
 
     /**
-     * Получить список ботов для конкретного окружения
+     * Получить список активных ботов с токенами
      */
-    public static function getBotsForEnvironment(string $environment): \Illuminate\Database\Eloquent\Collection
+    public static function getActiveBots(): \Illuminate\Database\Eloquent\Collection
     {
-        return self::enabled()
-            ->withTokenForEnvironment($environment)
-            ->withDomainForEnvironment($environment)
-            ->get();
+        return self::enabled()->withToken()->get();
     }
 } 
