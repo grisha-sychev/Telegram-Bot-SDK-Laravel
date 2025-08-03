@@ -72,9 +72,9 @@ class Bot extends Model
     /**
      * Получить класс бота
      */
-    public function getBotClass(): string
+    public function getBotClass()
     {
-        return 'App\\Bots\\' . ucfirst($this->name) . 'Bot';
+        return 'App\\Bots\\' . str_replace(' ', '', $this->name) . 'Bot';
     }
 
     /**

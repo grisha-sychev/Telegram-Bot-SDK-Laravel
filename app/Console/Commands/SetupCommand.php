@@ -161,15 +161,15 @@ class SetupCommand extends Command
                 pcntl_signal_dispatch();
             }
             
-            $name = $this->ask('Введите имя бота (латинские буквы, без пробелов)');
+            $name = $this->ask('Введите имя бота (латинские буквы, цифры, пробелы)');
             if (!$name) {
                 $this->error('❌ Имя бота обязательно');
                 continue;
             }
 
             // Проверяем имя на корректность
-            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $name)) {
-                $this->error('❌ Имя бота должно начинаться с буквы и содержать только латинские буквы, цифры и подчеркивания');
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9\s]*$/', $name)) {
+                $this->error('❌ Имя бота должно начинаться с буквы и содержать только латинские буквы, цифры и пробелы');
                 continue;
             }
 
@@ -360,7 +360,8 @@ class SetupCommand extends Command
 
     private function createBotClass(string $botName): void
     {
-        $className = ucfirst($botName) . 'Bot';
+        // Преобразуем имя в PascalCase: убираем пробелы и делаем каждое слово с заглавной буквы
+        $className = $this->toPascalCase($botName) . 'Bot';
         $classPath = app_path("Bots/{$className}.php");
 
         if (file_exists($classPath)) {
@@ -567,5 +568,23 @@ class {$className} extends AbstractBot
                 $this->line("  ✅ Существует: {$dir}");
             }
         }
+    }
+
+    /**
+     * Преобразует строку в PascalCase формат
+     * Примеры: "agent shop" -> "AgentShop", "my bot" -> "MyBot"
+     */
+    private function toPascalCase(string $input): string
+    {
+        // Убираем лишние пробелы и разделяем по пробелам
+        $words = array_filter(explode(' ', trim($input)));
+        
+        // Делаем каждое слово с заглавной буквы и объединяем
+        $pascalCase = '';
+        foreach ($words as $word) {
+            $pascalCase .= ucfirst(strtolower($word));
+        }
+        
+        return $pascalCase;
     }
 }
