@@ -64,6 +64,12 @@ class SetupCommand extends Command
 
         $this->displayBotInfo($botInfo);
 
+        // Сохраняем полный URL для webhook
+        $fullWebhookUrl = $botData['full_webhook_url'] ?? null;
+        
+        // Убираем временное поле перед сохранением в БД
+        unset($botData['full_webhook_url']);
+        
         // Сохраняем бота в базу данных
         $bot = $this->saveBotToDatabase($botData);
         if (!$bot || $this->shouldExit) {
@@ -74,9 +80,8 @@ class SetupCommand extends Command
         $this->createBotClass($botData['name']);
 
         // Настраиваем webhook
-        $webhookUrl = $botData['webhook_url'] ?: $this->option('webhook');
-        if ($webhookUrl) {
-            $this->setupWebhook($bot, $apiHost, $webhookUrl, $noSsl);
+        if ($fullWebhookUrl) {
+            $this->setupWebhook($bot, $apiHost, $fullWebhookUrl, $noSsl);
         } else {
             $this->warn('⏭️  Webhook не настроен (webhook_url не указан)');
         }
@@ -237,13 +242,16 @@ class SetupCommand extends Command
                 continue;
             }
             
-            // Генерируем URL с секретом для безопасности
-            $webhookUrl = rtrim($appUrl, '/') . '/webhook/' . Str::random(12);
+            // Генерируем простой индикатор для webhook_url
+            $webhookUrl = Str::random(12);
             
-            // Генерируем отдельный секрет из 32 символов для проверки подлинности
+            // Генерируем длинный секрет для webhook_secret
             $webhookSecret = Str::random(32);
             
-            $this->line("  🌐 URL будет: {$webhookUrl}");
+            // Формируем полный URL для отправки в Telegram
+            $fullWebhookUrl = rtrim($appUrl, '/') . '/webhook/' . $webhookUrl;
+            
+            $this->line("  🌐 URL будет: {$fullWebhookUrl}");
             $this->line("  🔐 Секрет для проверки: {$webhookSecret}");
             
             if (!$this->confirm('Продолжить с этим webhook URL?', true)) {
@@ -274,9 +282,10 @@ class SetupCommand extends Command
             'token' => $token,
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
-            'webhook_url' => $webhookUrl,
-            'webhook_secret' => $webhookSecret,
+            'webhook_url' => $webhookUrl, // Простой индикатор (12 символов)
+            'webhook_secret' => $webhookSecret, // Длинный секрет (32 символа)
             'no_ssl' => $noSsl,
+            'full_webhook_url' => $fullWebhookUrl, // Временное поле для передачи в setupWebhook
         ];
     }
 
@@ -341,7 +350,6 @@ class SetupCommand extends Command
             $bot = Bot::create($botData);
             $this->info('✅ Бот сохранен в базу данных');
             $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
-            $this->line("  🔒 Секрет проверки отделен от URL секрета для безопасности");
             return $bot;
         } catch (\Exception $e) {
             $this->error('❌ Ошибка сохранения в БД: ' . $e->getMessage());
@@ -494,16 +502,15 @@ class {$className} extends AbstractBot
             $response = $http->post($url, $payload);
 
             if ($response->successful()) {
-                // Сохраняем webhook данные в БД
+                // Сохраняем webhook данные в БД (только секрет)
                 $bot->update([
-                    'webhook_url' => $webhookUrl,
                     'webhook_secret' => $secret,
                 ]);
 
                 $this->info('✅ Webhook настроен успешно');
                 $this->line("  🌐 URL: {$webhookUrl}");
                 $this->line("  🔐 Secret: {$secret}");
-                $this->line("  🔒 Секрет проверки используется для проверки подлинности запросов от Telegram");
+                $this->line("  🔒 Secret используется для проверки подлинности запросов от Telegram");
             } else {
                 $result = $response->json();
                 $errorMessage = $result['description'] ?? 'Unknown error';

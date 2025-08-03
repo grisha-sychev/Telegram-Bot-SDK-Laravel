@@ -14,26 +14,21 @@ use App\Models\Bot;
  * URL: /webhook/{botName}
  * Боты загружаются из базы данных
  */
-Route::post('/webhook/{botName}', function ($botName) {
+Route::post('/webhook/{webhookUrl}', function ($webhookUrl) {
     try {
         // Ищем бота в базе данных
-        $botModel = Bot::byName($botName)->where('enabled', true)->first();
+        $botModel = Bot::where('webhook_url', $webhookUrl)->where('enabled', true)->first();
         
         if (!$botModel) {
-            \Log::error("Bot: Bot not found or disabled: {$botName}");
-            return response()->json(['error' => 'Bot not found or disabled'], 404);
+            return response()->json(['error' => 'Not found'], 404);
         }
 
-        // Логируем информацию о webhook
-        \Log::info("Bot: Processing webhook for bot: {$botName}", [
-            'webhook_url' => $botModel->webhook_url,
-            'full_webhook_url' => $botModel->getFullWebhookUrl()
-        ]);
-
-        // Проверяем, что у бота есть токен
-        if (!$botModel->hasToken()) {
-            \Log::error("Bot: No token for bot: {$botName}");
-            return response()->json(['error' => 'Bot not configured'], 403);
+        // Проверяем заголовок x-telegram-bot-api-secret-token
+        $secretToken = request()->header('x-telegram-bot-api-secret-token');
+        $expectedSecret = $botModel->webhook_secret;
+        
+        if ($secretToken !== $expectedSecret) {
+            return response()->json(['error' => 'Not found'], 404);
         }
 
         // Формируем имя класса бота
@@ -54,7 +49,7 @@ Route::post('/webhook/{botName}', function ($botName) {
         
         // Устанавливаем имя бота для получения токена из БД
         if (method_exists($bot, 'setBotName')) {
-            $bot->setBotName($botName);
+            $bot->setBotName($botModel->name);
         }
         
         // Устанавливаем дополнительные настройки если метод существует
@@ -75,8 +70,8 @@ Route::post('/webhook/{botName}', function ($botName) {
         }
         
     } catch (\Exception $e) {
-        \Log::error("Bot: Error processing webhook for {$botName}: " . $e->getMessage(), [
-            'bot' => $botName,
+        \Log::error("Bot: Error processing webhook for {$webhookUrl}: " . $e->getMessage(), [
+            'bot' => $botModel->name,
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
