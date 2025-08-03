@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('bots', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique()->comment('Уникальное имя бота');
+            $table->string('display_name')->comment('Имя бота');
             $table->string('token')->comment('Токен бота');
             $table->string('username')->nullable()->comment('Username бота (@botname)');
-            $table->string('first_name')->comment('Имя бота');
             $table->text('description')->nullable()->comment('Описание бота');
             $table->bigInteger('bot_id')->unique()->comment('ID бота в Telegram');
             $table->boolean('enabled')->default(true)->comment('Активен ли бот');
