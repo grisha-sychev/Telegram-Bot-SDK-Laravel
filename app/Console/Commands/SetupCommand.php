@@ -96,13 +96,13 @@ class SetupCommand extends Command
         return 0;
     }
 
-    private function handleSignal(int $signal): void
+    public function handleSignal(int $signal, bool|int $previousExitCode = 0): bool|int
     {
         $this->shouldExit = true;
         $this->newLine();
         $this->warn('⚠️  Завершение работы...');
         $this->newLine();
-        exit(0);
+        return 0;
     }
 
     private function showExistingBots(): void
