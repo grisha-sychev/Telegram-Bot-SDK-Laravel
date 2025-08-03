@@ -47,7 +47,7 @@ class SetupCommand extends Command
         // Дополняем данные информацией от Telegram
         $botData = array_merge($botData, [
             'username' => $botInfo['username'],
-            'first_name' => $botInfo['first_name'],
+            'display_name' => $botInfo['display_name'],
             'description' => $botInfo['description'] ?? null,
             'bot_id' => $botInfo['id'],
         ]);
@@ -236,7 +236,7 @@ class SetupCommand extends Command
     private function displayBotInfo(array $botInfo): void
     {
         $this->info('🤖 Информация о боте:');
-        $this->line("  📝 Имя: {$botInfo['first_name']}");
+        $this->line("  📝 Имя: {$botInfo['display_name']}");
         $this->line("  🆔 Username: @{$botInfo['username']}");
         $this->line("  📡 ID: {$botInfo['id']}");
 

@@ -157,7 +157,7 @@ class HealthCommand extends Command
         $status = $bot->enabled ? 'активен' : 'отключен';
         
         $this->line("{$statusIcon} Бот: {$bot->name} (@{$bot->username}) - {$status}");
-        $this->line("  📝 Имя: {$bot->first_name}");
+        $this->line("  📝 Имя: {$bot->display_name}");
         $this->line("  🆔 ID: {$bot->bot_id}");
         
         // Проверяем наличие токена

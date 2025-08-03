@@ -719,12 +719,12 @@ class WebhookCommand extends Command
                 'from' => [
                     'id' => 123456789,
                     'is_bot' => false,
-                    'first_name' => 'Test',
+                    'display_name' => 'Test',
                     'username' => 'testuser'
                 ],
                 'chat' => [
                     'id' => 123456789,
-                    'first_name' => 'Test',
+                    'display_name' => 'Test',
                     'username' => 'testuser',
                     'type' => 'private'
                 ],

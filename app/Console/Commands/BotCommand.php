@@ -305,7 +305,7 @@ class BotCommand extends Command
                 if ($response->successful()) {
                     $botInfo = $response->json()['result'];
                     $this->info('   ✅ API подключение работает');
-                    $this->line("   📝 Имя: {$botInfo['first_name']}");
+                    $this->line("   📝 Имя: {$botInfo['display_name']}");
                     $this->line("   🆔 Username: @{$botInfo['username']}");
                 } else {
                     $this->error('   ❌ Ошибка API: ' . $response->status());

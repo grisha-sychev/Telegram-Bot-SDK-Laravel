@@ -243,7 +243,7 @@ class StatsCommand extends Command
         if (isset($stats['bot_info']['error'])) {
             $this->error("  ❌ {$stats['bot_info']['error']}");
         } else {
-            $this->line("  📝 Имя: {$stats['bot_info']['first_name']}");
+            $this->line("  📝 Имя: {$stats['bot_info']['display_name']}");
             $this->line("  🆔 Username: @{$stats['bot_info']['username']}");
         }
 
