@@ -12,10 +12,19 @@ class SetupCommand extends Command
 {
     protected $signature = 'bot:new {--webhook= : Webhook URL} {--api-host= : Custom API host} {--no-ssl : Disable SSL verification} {--force : Force setup without confirmation}';
     protected $description = 'Настройка бота';
+    private $shouldExit = false;
 
     public function handle()
     {
+        // Устанавливаем обработчик сигналов для graceful завершения
+        if (function_exists('pcntl_signal')) {
+            pcntl_signal(SIGTSTP, [$this, 'handleSignal']); // Ctrl+Z
+            pcntl_signal(SIGTERM, [$this, 'handleSignal']);
+        }
+
         $this->info('🚀 Bot Setup Wizard');
+        $this->newLine();
+        $this->line('💡 Для выхода из команды нажмите Ctrl+Z');
         $this->newLine();
 
         // Показываем существующие боты
@@ -23,7 +32,8 @@ class SetupCommand extends Command
 
         // Интерактивный ввод данных нового бота
         $botData = $this->collectBotData();
-        if (!$botData) {
+        if (!$botData || $this->shouldExit) {
+            $this->warn('👋 Настройка бота отменена');
             return 1;
         }
 
@@ -40,7 +50,7 @@ class SetupCommand extends Command
         }
 
         $botInfo = $this->getBotInfo($token, $apiHost, $noSsl);
-        if (!$botInfo) {
+        if (!$botInfo || $this->shouldExit) {
             return 1;
         }
 
@@ -56,7 +66,7 @@ class SetupCommand extends Command
 
         // Сохраняем бота в базу данных
         $bot = $this->saveBotToDatabase($botData);
-        if (!$bot) {
+        if (!$bot || $this->shouldExit) {
             return 1;
         }
 
@@ -84,6 +94,15 @@ class SetupCommand extends Command
         $this->line('🔍 Проверка: php artisan bot:health');
 
         return 0;
+    }
+
+    private function handleSignal(int $signal): void
+    {
+        $this->shouldExit = true;
+        $this->newLine();
+        $this->warn('⚠️  Завершение работы...');
+        $this->newLine();
+        exit(0);
     }
 
     private function showExistingBots(): void
@@ -128,6 +147,10 @@ class SetupCommand extends Command
 
         // Запрашиваем имя бота с возможностью повтора
         do {
+            if ($this->shouldExit) {
+                return null;
+            }
+            
             $name = $this->ask('Введите имя бота (латинские буквы, без пробелов)');
             if (!$name) {
                 $this->error('❌ Имя бота обязательно');
@@ -156,6 +179,10 @@ class SetupCommand extends Command
         // Запрашиваем токен с возможностью повтора
         $this->info('🔧 Токен бота:');
         do {
+            if ($this->shouldExit) {
+                return null;
+            }
+            
             $token = $this->ask('Введите токен бота (полученный от @BotFather)');
             if (!$token) {
                 $this->error('❌ Токен бота обязателен');
@@ -184,6 +211,10 @@ class SetupCommand extends Command
         // Генерируем webhook URL и секрет отдельно для безопасности
         $this->info('🌐 Webhook URL:');
         do {
+            if ($this->shouldExit) {
+                return null;
+            }
+            
             $appUrl = env('APP_URL');
             if (!$appUrl) {
                 $this->error('❌ APP_URL не установлен в .env файле');
@@ -199,7 +230,6 @@ class SetupCommand extends Command
             
             $this->line("  🌐 URL будет: {$webhookUrl}");
             $this->line("  🔐 Секрет для проверки: {$webhookSecret}");
-            $this->line("  📝 URL секрет и секрет проверки разные для безопасности");
             
             if (!$this->confirm('Продолжить с этим webhook URL?', true)) {
                 continue;
@@ -209,6 +239,9 @@ class SetupCommand extends Command
         } while (true);
 
         // Запрашиваем администраторов (опционально)
+        if ($this->shouldExit) {
+            return null;
+        }
         $adminIds = $this->ask('Введите ID администраторов через запятую (опционально)');
         if ($adminIds) {
             $adminIdsArray = array_filter(array_map('trim', explode(',', $adminIds)));
@@ -216,6 +249,9 @@ class SetupCommand extends Command
         }
 
         // Запрашиваем отключение SSL проверки (опционально)
+        if ($this->shouldExit) {
+            return null;
+        }
         $noSsl = $this->option('no-ssl') ?: $this->confirm('Отключить проверку SSL сертификатов? (только для разработки)', false);
 
         return [
@@ -471,6 +507,10 @@ class {$className} extends AbstractBot
 
         if (!file_exists($configPath)) {
             $this->warn('⚠️  Конфигурационный файл не найден');
+
+            if ($this->shouldExit) {
+                return;
+            }
 
             if ($this->confirm('Опубликовать конфигурацию?', true)) {
                 $this->call('vendor:publish', [
