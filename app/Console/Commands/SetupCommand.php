@@ -18,13 +18,13 @@ class SetupCommand extends Command
     {
         // Устанавливаем обработчик сигналов для graceful завершения
         if (function_exists('pcntl_signal')) {
-            pcntl_signal(SIGTSTP, [$this, 'handleSignal']); // Ctrl+Z
+            pcntl_signal(SIGINT, [$this, 'handleSignal']);  // Ctrl+C
             pcntl_signal(SIGTERM, [$this, 'handleSignal']);
         }
 
         $this->info('🚀 Bot Setup Wizard');
         $this->newLine();
-        $this->line('💡 Для выхода из команды нажмите Ctrl+Z');
+        $this->line('💡 Для выхода из команды нажмите Ctrl+C');
         $this->newLine();
 
         // Показываем существующие боты
@@ -57,7 +57,7 @@ class SetupCommand extends Command
         // Дополняем данные информацией от Telegram
         $botData = array_merge($botData, [
             'username' => $botInfo['username'],
-            'display_name' => $botInfo['display_name'],
+            'display_name' => $botInfo['first_name'],
             'description' => $botInfo['description'] ?? null,
             'bot_id' => $botInfo['id'],
         ]);
@@ -96,7 +96,7 @@ class SetupCommand extends Command
         return 0;
     }
 
-    public function handleSignal(int $signal, bool|int $previousExitCode = 0): bool|int
+    public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
     {
         $this->shouldExit = true;
         $this->newLine();
@@ -151,6 +151,11 @@ class SetupCommand extends Command
                 return null;
             }
             
+            // Обрабатываем сигналы во время ожидания ввода
+            if (function_exists('pcntl_signal_dispatch')) {
+                pcntl_signal_dispatch();
+            }
+            
             $name = $this->ask('Введите имя бота (латинские буквы, без пробелов)');
             if (!$name) {
                 $this->error('❌ Имя бота обязательно');
@@ -183,6 +188,11 @@ class SetupCommand extends Command
                 return null;
             }
             
+            // Обрабатываем сигналы во время ожидания ввода
+            if (function_exists('pcntl_signal_dispatch')) {
+                pcntl_signal_dispatch();
+            }
+            
             $token = $this->ask('Введите токен бота (полученный от @BotFather)');
             if (!$token) {
                 $this->error('❌ Токен бота обязателен');
@@ -213,6 +223,11 @@ class SetupCommand extends Command
         do {
             if ($this->shouldExit) {
                 return null;
+            }
+            
+            // Обрабатываем сигналы во время ожидания ввода
+            if (function_exists('pcntl_signal_dispatch')) {
+                pcntl_signal_dispatch();
             }
             
             $appUrl = env('APP_URL');
@@ -307,7 +322,7 @@ class SetupCommand extends Command
     private function displayBotInfo(array $botInfo): void
     {
         $this->info('🤖 Информация о боте:');
-        $this->line("  📝 Имя: {$botInfo['display_name']}");
+        $this->line("  📝 Имя: {$botInfo['first_name']}");
         $this->line("  🆔 Username: @{$botInfo['username']}");
         $this->line("  📡 ID: {$botInfo['id']}");
 
@@ -325,8 +340,8 @@ class SetupCommand extends Command
         try {
             $bot = Bot::create($botData);
             $this->info('✅ Бот сохранен в базу данных');
-                            $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
-                $this->line("  🔒 Секрет проверки отделен от URL секрета для безопасности");
+            $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
+            $this->line("  🔒 Секрет проверки отделен от URL секрета для безопасности");
             return $bot;
         } catch (\Exception $e) {
             $this->error('❌ Ошибка сохранения в БД: ' . $e->getMessage());

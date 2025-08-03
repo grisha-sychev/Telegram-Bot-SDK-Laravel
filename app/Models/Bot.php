@@ -15,7 +15,7 @@ class Bot extends Model
         'name',
         'token',
         'username',
-        'first_name',
+        'display_name',
         'description',
         'bot_id',
         'enabled',
