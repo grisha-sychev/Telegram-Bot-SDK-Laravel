@@ -181,7 +181,7 @@ class SetupCommand extends Command
             break; // Если все проверки пройдены, выходим из цикла
         } while (true);
 
-        // Генерируем webhook URL из APP_URL и случайного секрета
+        // Генерируем webhook URL и секрет отдельно для безопасности
         $this->info('🌐 Webhook URL:');
         do {
             $appUrl = env('APP_URL');
@@ -191,12 +191,15 @@ class SetupCommand extends Command
                 continue;
             }
             
-            // Генерируем случайный секрет из 12 символов
-            $webhookSecret = Str::random(12);
-            $webhookUrl = rtrim($appUrl, '/') . '/webhook/' . $webhookSecret;
+            // Генерируем URL с секретом для безопасности
+            $webhookUrl = rtrim($appUrl, '/') . '/webhook/' . Str::random(12);
+            
+            // Генерируем отдельный секрет из 32 символов для проверки подлинности
+            $webhookSecret = Str::random(32);
             
             $this->line("  🌐 URL будет: {$webhookUrl}");
-            $this->line("  🔐 Секрет: {$webhookSecret}");
+            $this->line("  🔐 Секрет для проверки: {$webhookSecret}");
+            $this->line("  📝 URL секрет и секрет проверки разные для безопасности");
             
             if (!$this->confirm('Продолжить с этим webhook URL?', true)) {
                 continue;
@@ -286,7 +289,8 @@ class SetupCommand extends Command
         try {
             $bot = Bot::create($botData);
             $this->info('✅ Бот сохранен в базу данных');
-            $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
+                            $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
+                $this->line("  🔒 Секрет проверки отделен от URL секрета для безопасности");
             return $bot;
         } catch (\Exception $e) {
             $this->error('❌ Ошибка сохранения в БД: ' . $e->getMessage());
@@ -397,7 +401,7 @@ class {$className} extends AbstractBot
         }
 
         // Используем секрет из данных бота или генерируем новый
-        $secret = $bot->webhook_secret ?? Str::random(12);
+        $secret = $bot->webhook_secret ?? Str::random(32);
 
         // Устанавливаем webhook
         $this->info('🔧 Настройка webhook...');
@@ -448,6 +452,7 @@ class {$className} extends AbstractBot
                 $this->info('✅ Webhook настроен успешно');
                 $this->line("  🌐 URL: {$webhookUrl}");
                 $this->line("  🔐 Secret: {$secret}");
+                $this->line("  🔒 Секрет проверки используется для проверки подлинности запросов от Telegram");
             } else {
                 $result = $response->json();
                 $errorMessage = $result['description'] ?? 'Unknown error';
