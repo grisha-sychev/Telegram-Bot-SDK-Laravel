@@ -119,65 +119,94 @@ class SetupCommand extends Command
         $this->info('➕ Добавление нового бота');
         $this->newLine();
 
-        // Запрашиваем имя бота
-        $name = $this->ask('Введите имя бота (латинские буквы, без пробелов)');
-        if (!$name) {
-            $this->error('❌ Имя бота обязательно');
-            return null;
-        }
+        $name = null;
+        $token = null;
+        $webhookUrl = null;
+        $webhookSecret = null;
+        $adminIdsArray = [];
+        $noSsl = false;
 
-        // Проверяем имя на корректность
-        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $name)) {
-            $this->error('❌ Имя бота должно начинаться с буквы и содержать только латинские буквы, цифры и подчеркивания');
-            return null;
-        }
-
-        // Проверяем уникальность имени
-        try {
-            if (Bot::byName($name)->exists()) {
-                $this->error("❌ Бот с именем '{$name}' уже существует");
-                return null;
+        // Запрашиваем имя бота с возможностью повтора
+        do {
+            $name = $this->ask('Введите имя бота (латинские буквы, без пробелов)');
+            if (!$name) {
+                $this->error('❌ Имя бота обязательно');
+                continue;
             }
-        } catch (\Exception $e) {
-            // Игнорируем ошибку если таблица не существует
-        }
 
-        // Запрашиваем токен
+            // Проверяем имя на корректность
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $name)) {
+                $this->error('❌ Имя бота должно начинаться с буквы и содержать только латинские буквы, цифры и подчеркивания');
+                continue;
+            }
+
+            // Проверяем уникальность имени
+            try {
+                if (Bot::byName($name)->exists()) {
+                    $this->error("❌ Бот с именем '{$name}' уже существует");
+                    continue;
+                }
+            } catch (\Exception $e) {
+                // Игнорируем ошибку если таблица не существует
+            }
+
+            break; // Если все проверки пройдены, выходим из цикла
+        } while (true);
+
+        // Запрашиваем токен с возможностью повтора
         $this->info('🔧 Токен бота:');
-        $token = $this->ask('Введите токен бота (полученный от @BotFather)');
-        if (!$token) {
-            $this->error('❌ Токен бота обязателен');
-            return null;
-        }
-        
-        if (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
-            $this->error('❌ Неверный формат токена');
-            $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
-            return null;
-        }
-
-        // Проверяем уникальность токена
-        try {
-            if (Bot::byToken($token)->exists()) {
-                $this->error('❌ Бот с таким токеном уже существует');
-                return null;
+        do {
+            $token = $this->ask('Введите токен бота (полученный от @BotFather)');
+            if (!$token) {
+                $this->error('❌ Токен бота обязателен');
+                continue;
             }
-        } catch (\Exception $e) {
-            // Игнорируем ошибку если таблица не существует
-        }
+            
+            if (!preg_match('/^\d+:[A-Za-z0-9_-]{35}$/', $token)) {
+                $this->error('❌ Неверный формат токена');
+                $this->line('Токен должен иметь формат: 123456789:AABBccDDeeFFggHHiiJJkkLLmmNNooP');
+                continue;
+            }
 
-        // Запрашиваем webhook URL
+            // Проверяем уникальность токена
+            try {
+                if (Bot::byToken($token)->exists()) {
+                    $this->error('❌ Бот с таким токеном уже существует');
+                    continue;
+                }
+            } catch (\Exception $e) {
+                // Игнорируем ошибку если таблица не существует
+            }
+
+            break; // Если все проверки пройдены, выходим из цикла
+        } while (true);
+
+        // Генерируем webhook URL из APP_URL и случайного секрета
         $this->info('🌐 Webhook URL:');
-        $webhookUrl = $this->ask('Введите полный webhook URL (например: https://example.com/webhook/botname)');
-        if ($webhookUrl && !filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
-            $this->error('❌ Неверный формат webhook URL');
-            $this->line('URL должен быть валидным (например: https://example.com/webhook/botname)');
-            return null;
-        }
+        do {
+            $appUrl = env('APP_URL');
+            if (!$appUrl) {
+                $this->error('❌ APP_URL не установлен в .env файле');
+                $this->line('Добавьте APP_URL=https://your-domain.com в .env файл');
+                continue;
+            }
+            
+            // Генерируем случайный секрет из 12 символов
+            $webhookSecret = Str::random(12);
+            $webhookUrl = rtrim($appUrl, '/') . '/webhook/' . $webhookSecret;
+            
+            $this->line("  🌐 URL будет: {$webhookUrl}");
+            $this->line("  🔐 Секрет: {$webhookSecret}");
+            
+            if (!$this->confirm('Продолжить с этим webhook URL?', true)) {
+                continue;
+            }
+
+            break; // Если пользователь подтвердил, выходим из цикла
+        } while (true);
 
         // Запрашиваем администраторов (опционально)
         $adminIds = $this->ask('Введите ID администраторов через запятую (опционально)');
-        $adminIdsArray = [];
         if ($adminIds) {
             $adminIdsArray = array_filter(array_map('trim', explode(',', $adminIds)));
             $adminIdsArray = array_map('intval', $adminIdsArray);
@@ -192,6 +221,7 @@ class SetupCommand extends Command
             'admin_ids' => $adminIdsArray,
             'enabled' => true,
             'webhook_url' => $webhookUrl,
+            'webhook_secret' => $webhookSecret,
             'no_ssl' => $noSsl,
         ];
     }
@@ -224,7 +254,9 @@ class SetupCommand extends Command
                 $this->info('✅ Токен бота валиден');
                 return $response->json()['result'];
             } else {
-                $this->error('❌ Ошибка API: ' . $response->status());
+                $result = $response->json();
+                $errorMessage = $result['description'] ?? 'Unknown error';
+                $this->error('❌ Ошибка API: ' . $response->status() . ' - ' . $errorMessage);
                 return null;
             }
         } catch (\Exception $e) {
@@ -254,6 +286,7 @@ class SetupCommand extends Command
         try {
             $bot = Bot::create($botData);
             $this->info('✅ Бот сохранен в базу данных');
+            $this->line("  🔐 Webhook секрет: {$botData['webhook_secret']}");
             return $bot;
         } catch (\Exception $e) {
             $this->error('❌ Ошибка сохранения в БД: ' . $e->getMessage());
@@ -363,8 +396,8 @@ class {$className} extends AbstractBot
             $this->warn('⚠️  Используется HTTP соединение (только для разработки!)');
         }
 
-        // Генерируем secret если не установлен
-        $secret = $bot->webhook_secret ?? Str::random(32);
+        // Используем секрет из данных бота или генерируем новый
+        $secret = $bot->webhook_secret ?? Str::random(12);
 
         // Устанавливаем webhook
         $this->info('🔧 Настройка webhook...');
@@ -417,7 +450,8 @@ class {$className} extends AbstractBot
                 $this->line("  🔐 Secret: {$secret}");
             } else {
                 $result = $response->json();
-                $this->error('❌ Ошибка установки webhook: ' . ($result['description'] ?? 'Unknown error'));
+                $errorMessage = $result['description'] ?? 'Unknown error';
+                $this->error('❌ Ошибка установки webhook: ' . $errorMessage);
             }
         } catch (\Exception $e) {
             $this->error('❌ Ошибка установки webhook: ' . $e->getMessage());
